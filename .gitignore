@@ -16,7 +16,18 @@ node_modules/
 # Environment / secrets
 .env
 *.env
+!.env.example
 
 # IDE
 .vscode/
 .idea/
+
+# Logs
+logs/
+
+# Binary data
+*.pkl
+*.npy
+
+# Docker
+docker-compose.override.yml
