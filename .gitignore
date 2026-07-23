@@ -16,7 +16,21 @@ node_modules/
 # Environment / secrets
 .env
 *.env
+!.env.example
 
 # IDE
 .vscode/
 .idea/
+
+# Logs
+logs/
+
+# Binary data (stored in pgvector, not in git)
+*.pkl
+*.npy
+
+# Docker
+docker-compose.override.yml
+
+# Kubernetes secrets (never commit)
+k8s/secrets.yaml
