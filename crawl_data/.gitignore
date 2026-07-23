@@ -11,7 +11,6 @@ Final_Data.json
 *.csv
 *_summary.json
 property_id_index*.json
-crawler.py
 
 # Large/derived crawl outputs
 data/images/
