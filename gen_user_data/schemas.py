@@ -45,8 +45,13 @@ class Listing(BaseModel):
     area_sqm: float = Field(..., gt=0)
     bedrooms: int = Field(..., ge=0)
     bathrooms: int = Field(..., ge=0)
-    budget_group: str
+    budget_group: str  # phân khúc TUYỆT ĐỐI toàn thị trường (affordable/mid_range/luxury)
     features: Dict[str, bool] = Field(default_factory=dict)
+    # Mức giá TƯƠNG ĐỐI trong quận (cheap/mid/premium) — so với phân bổ giá của
+    # chính quận đó. Dùng để chọn từ ngữ query ("nhà rẻ" khác nhau theo khu vực).
+    price_tier_area: Optional[str] = None
+    # Mô tả ngôn ngữ tự nhiên — chỉ có khi bật LLM (USE_LLM=1), ngược lại None.
+    description: Optional[str] = None
 
     @field_validator("features")
     @classmethod
@@ -97,6 +102,8 @@ class UserProfile(BaseModel):
     primary_intent: str
     demographics: Demographics
     explicit_preferences: ExplicitPreferences
+    # "Bio" ngắn — chỉ có khi bật LLM (USE_LLM=1), ngược lại None.
+    persona: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

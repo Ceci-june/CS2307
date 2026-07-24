@@ -105,7 +105,50 @@ def build_catalog(seed: int = C.RANDOM_SEED, limit: int | None = None) -> List[L
                 features=features,
             )
         )
+    assign_area_price_tier(listings)
     return listings
+
+
+# Ngưỡng tercile theo quận: dưới p33 = cheap, p33..p66 = mid, trên p66 = premium.
+_AREA_TIER_QUANTILES = (0.33, 0.66)
+_MIN_LISTINGS_PER_DISTRICT = 6  # quá ít thì dùng ngưỡng toàn thị trường
+
+
+def district_price_quantiles(listings: List[Listing]):
+    """Trả về {district: (p33, p66)} của price_billion; quận quá ít listing dùng
+    ngưỡng toàn cục (khoá '_global')."""
+    from collections import defaultdict
+
+    by_dist = defaultdict(list)
+    all_prices = []
+    for l in listings:
+        by_dist[l.district].append(l.price_billion)
+        all_prices.append(l.price_billion)
+    ql, qh = _AREA_TIER_QUANTILES
+    g_lo, g_hi = float(np.quantile(all_prices, ql)), float(np.quantile(all_prices, qh))
+    stats = {"_global": (g_lo, g_hi)}
+    for d, prices in by_dist.items():
+        if len(prices) >= _MIN_LISTINGS_PER_DISTRICT:
+            stats[d] = (float(np.quantile(prices, ql)), float(np.quantile(prices, qh)))
+        else:
+            stats[d] = (g_lo, g_hi)
+    return stats
+
+
+def _tier_for(price: float, lo: float, hi: float) -> str:
+    if price <= lo:
+        return "cheap"
+    if price <= hi:
+        return "mid"
+    return "premium"
+
+
+def assign_area_price_tier(listings: List[Listing]) -> None:
+    """Gán price_tier_area cho từng listing dựa trên phân bổ giá TRONG quận của nó."""
+    stats = district_price_quantiles(listings)
+    for l in listings:
+        lo, hi = stats.get(l.district, stats["_global"])
+        l.price_tier_area = _tier_for(l.price_billion, lo, hi)
 
 
 def save_catalog(listings: List[Listing], path: str = LISTINGS_PATH) -> None:

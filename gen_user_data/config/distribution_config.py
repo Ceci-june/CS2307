@@ -13,12 +13,11 @@ from __future__ import annotations
 RANDOM_SEED = 20260723
 
 # --- Quy mô sinh -------------------------------------------------------------
-NUM_USERS = 300
-# Số interaction trung bình mỗi user (Poisson lambda). Có user active, có user
-# chỉ xem 1-2 căn rồi thôi.
-INTERACTIONS_PER_USER_LAMBDA = 12
-MIN_INTERACTIONS_PER_USER = 1
-MAX_INTERACTIONS_PER_USER = 60
+NUM_USERS = 5
+# Số interaction trung bình mỗi user (Poisson lambda). Clamp về [MIN, MAX].
+INTERACTIONS_PER_USER_LAMBDA = 15
+MIN_INTERACTIONS_PER_USER = 10
+MAX_INTERACTIONS_PER_USER = 20
 
 # --- Phân khúc giá (budget segment) -----------------------------------------
 # Guide: 60% rẻ / 30% trung cấp / 10% cao cấp.

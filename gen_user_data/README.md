@@ -69,6 +69,32 @@ python visualize_graph.py      # 4) -> graph_viz.html (mở bằng trình duyệ
 python tests/test_metrics.py   #    kiểm chứng metric (6/6 PASS)
 ```
 
+### 2.4. Bật LLM sinh văn bản (tuỳ chọn — Groq)
+
+Mặc định pipeline chạy **offline** bằng template + RNG. Nếu muốn văn bản tự nhiên
+hơn, bật LLM — **RNG vẫn kiểm soát toàn bộ phân phối/nhãn**, LLM chỉ lo phần chữ:
+
+| Trường | Khi TẮT (mặc định) | Khi BẬT LLM |
+|---|---|---|
+| `interactions.raw_query` | câu ghép từ template | câu tìm kiếm tự nhiên do LLM sinh |
+| `users.persona` | `null` | "bio" ngắn mô tả nhu cầu khách |
+| `listings.description` | `null` | mô tả tin đăng (đúng dữ liệu, không bịa tiện ích) |
+
+Cấu hình qua `.env` (gốc dự án — script tự nạp) hoặc `export`:
+
+```bash
+USE_LLM=1
+LLM_PROVIDER=groq                 # groq | grok | openai (đều tương thích OpenAI API)
+GROQ_API_KEY=gsk_...              # https://console.groq.com/keys
+# LLM_MODEL=llama-3.3-70b-versatile   # tuỳ chọn
+# LLM_MAX_LISTINGS_DESC=150           # số listing sinh description (0 = tắt)
+```
+
+Cần cài `openai` (đã có trong `requirements.txt`). Đổi provider chỉ bằng đổi
+`LLM_PROVIDER`/`LLM_MODEL`/key — client **provider-agnostic** (OpenAI-compatible).
+Mọi lời gọi LLM đều **batch** (tiết kiệm token) và **fallback template** nếu lỗi →
+không bao giờ làm hỏng pipeline. Bật hay tắt, dữ liệu vẫn hợp lệ cùng một schema.
+
 ---
 
 ## 3. Cấu trúc thư mục
@@ -88,7 +114,8 @@ gen_user_data/
 ├── generation/
 │   ├── generate_users.py           # -> data/users.json
 │   ├── generate_interactions.py    # -> data/interactions.json (+ hàm relevance())
-│   └── llm_client.py               # sinh raw_query (offline template / LLM tuỳ chọn)
+│   ├── llm_client.py               # client LLM provider-agnostic (Groq) + QueryGenerator
+│   └── enrich.py                   # (LLM) persona cho user, description cho listing
 ├── generate_all.py                 # driver: chạy cả 4 bước sinh + build KG
 │
 ├── kg/
@@ -101,6 +128,9 @@ gen_user_data/
 ├── eval_engine.py                  # adapter gọi TRỰC TIẾP metric của repo đã clone
 ├── run_eval.py                     # temporal split + 3 recommender + báo cáo
 │
+├── similarity_kg.py                # (task 1.3) ma trận similarity -> cạnh KG + KIỂM CHỨNG hành vi
+├── load_all.py                     # (task 1.4) nạp SQLite (quan hệ) + graph stub NetworkX — IDEMPOTENT
+├── precompute.py                   # tính sẵn artifact phục vụ query (neighbors, popularity, expansion...)
 ├── export_csv.py                   # JSON -> data/csv/*.csv
 ├── visualize_graph.py              # -> graph_viz.html (SVG tự-chứa, theme-aware)
 ├── tests/
@@ -108,8 +138,14 @@ gen_user_data/
 │
 └── data/                           # (SINH RA bằng script; tái tạo: python generate_all.py)
     ├── listings.json  users.json  interactions.json  eval_results.json
+    ├── similarity_validation.json  # báo cáo kiểm chứng declared vs hành vi
+    ├── warehouse.sqlite            # (load_all.py + precompute.py) kho quan hệ — .gitignore
+    ├── graph/kg_networkx.pkl       # (load_all.py) graph stub — .gitignore
+    ├── precomputed/*.json          # (precompute.py) cache query-time — .gitignore
     ├── csv/           *.csv
     └── kg/            nodes.csv  edges.csv  import.cypher
+                       similarity_edges.json           # declared (amenity + criteria)
+                       location_similarity_edges.json  # từ hành vi (quận↔quận)
 ```
 
 ---
@@ -159,6 +195,12 @@ amenity/accessibility/view **khớp chính xác**
 `listing_id` là **ID thật** lấy từ `backend/src/data/embeddings.pkl` (3037 căn);
 các thuộc tính (giá, diện tích, quận, `features`) được **mô phỏng nhất quán**.
 
+- `budget_group` — phân khúc **tuyệt đối** toàn thị trường (affordable/mid_range/luxury).
+- `price_tier_area` — mức giá **tương đối trong quận** (`cheap`/`mid`/`premium`),
+  tính bằng tercile (p33/p66) của phân bổ giá **chính quận đó** (`catalog.district_price_quantiles`).
+  → dùng để chọn từ ngữ query: "nhà rẻ" ở Quận 1 (p33≈2.1 tỷ) khác "nhà rẻ" ở Quận 9.
+  Câu query lấy từ `price_tier_area` chứ không nhắc con số tỷ tuyệt đối.
+
 ---
 
 ## 5. Cấu hình phân phối
@@ -180,11 +222,79 @@ Chỉnh mọi thứ ở một chỗ: [`config/distribution_config.py`](config/di
 [`kg/build_kg.py`](kg/build_kg.py) xuất `nodes.csv`, `edges.csv` và `import.cypher`
 (chạy được ngay trên Neo4j: `cat import.cypher | cypher-shell`).
 
-- **Nodes:** `User`, `Listing`, `Location`(district), `Amenity`, `Intent`, `Query`
+- **Nodes:** `User`, `Listing`, `Location`(district), `Amenity`, `Intent`, `Query`, `Criterion`
 - **Edges:** `VIEWED/SAVED/SHARED/CONTACTED {score,dwell,timestamp}`, `SEARCHED`,
-  `HAS_INTENT`, `PREFERS_DISTRICT`, `LIKES_AMENITY`, `LOCATED_IN`, `HAS_AMENITY`
+  `HAS_INTENT`, `PREFERS_DISTRICT`, `LIKES_AMENITY`, `LOCATED_IN`, `HAS_AMENITY`,
+  `SIMILAR_TO {weight}` (amenity/criterion), `SIMILAR_LOCATION {weight}` (quận↔quận)
 
-Quy mô hiện tại: **~7.045 node · ~33.034 edge**.
+Quy mô hiện tại: **~7.081 node · ~33.169 edge**.
+
+### 6.1. Similarity matrix & kiểm chứng (task 1.3)
+
+[`similarity_kg.py`](similarity_kg.py) — **không nạp ma trận nguyên si mà kiểm chứng với hành vi**:
+
+1. **Declared → cạnh** (`data/kg/similarity_edges.json`), đúng format `{attr_a, attr_b, weight}`:
+   - amenity↔amenity từ `knowledge.py` (24 cặp, cùng tên field với data);
+   - criteria↔criteria (ngữ nghĩa) từ `crawl_data/similarity_matrix_v2.py` (79 cặp) → node `Criterion`.
+2. **Empirical từ hành vi** (interactions): cosine trên ma trận `user×amenity` và `user×district`.
+3. **Kiểm chứng** declared vs hành vi → `data/similarity_validation.json`:
+   tương quan **Spearman ρ** + tỷ lệ khớp (|Δ|≤0.2) + top cặp lệch nhất.
+4. **Location edges từ hành vi** (`location_similarity_edges.json`) — vd `Phường Dĩ An ↔ Quận 9`.
+
+> **Kết quả trên dữ liệu mô phỏng hiện tại:** ρ ≈ 0.2, khớp 13/24 cặp. Nghĩa là ma
+> trận chuyên gia **chưa được hành vi mô phỏng xác nhận** — vì simulator gán amenity
+> *độc lập* theo phân khúc nên các amenity bị tương quan đồng loạt. Đây chính là điều
+> cần "kiểm chứng": với **dữ liệu thật** ρ sẽ có ý nghĩa; hoặc muốn sim phản ánh ma
+> trận thì phải **tiêm tương quan amenity** vào `catalog.py`. Việc kiểm chứng là công
+> cụ, không phải nạp mù.
+
+### 6.2. Pipeline nạp dữ liệu — `load_all.py` (task 1.4, IDEMPOTENT)
+
+[`load_all.py`](load_all.py) nạp dữ liệu vào 2 kho:
+
+- **Quan hệ** (property / behavior / criteria) → **SQLite** `data/warehouse.sqlite`
+  (zero-config; đổi sang Postgres chỉ cần thay connection).
+- **Đồ thị** → **NetworkX** pickle `data/graph/kg_networkx.pkl`
+  (Neo4j: đã có `data/kg/import.cypher` cho data engineer nạp).
+
+```bash
+python load_all.py                    # nạp tất cả
+python load_all.py --verify-idempotent   # chạy 2 lần, khẳng định số dòng KHÔNG đổi
+```
+
+| Hàm | Việc |
+|---|---|
+| `load_properties()` | + derived: `price_per_sqm_mil`, `amenity_count`, `family_suitable`; bảng `properties` + `property_amenity` |
+| `load_users()` | `users` + link `user_pref_district` / `user_liked_amenity` |
+| `load_behavior()` | **sau khi validate** referential integrity (user & listing phải tồn tại); bảng `behavior` + cờ `is_positive` |
+| `load_similarity()` | edges Attribute↔Attribute vào `attribute_similarity` (chuẩn hoá thứ tự cặp) |
+| `build_graph_stub()` | NetworkX `MultiDiGraph`: node **User / Property / Attribute** + edges (behavior, HAS_ATTRIBUTE, PREFERS, LIKES, SIMILAR_TO) |
+
+**Cơ chế idempotent:** mỗi bảng **MIRROR file nguồn** — `DELETE FROM` rồi bulk-insert
+(full-refresh) nên vừa không nhân đôi khi re-run, vừa **xử lý đúng khi data co lại**
+(vd đổi 300 → 5 user, row cũ biến mất); similarity chuẩn hoá `(a,b)` với `a<=b`;
+graph dựng lại từ đầu rồi ghi đè pickle. Đã xác minh: chạy 2 lần → số dòng mọi bảng
+**giống hệt**.
+
+### 6.3. Tính sẵn phục vụ query — `precompute.py`
+
+[`precompute.py`](precompute.py) tính trước những thứ đắt để **query về sau chỉ việc tra cứu**
+(nhanh hơn & chất lượng hơn). Kết quả → `data/precomputed/*.json` + bảng SQLite (`pc_*`).
+
+```bash
+python precompute.py     # chạy sau generate_all.py + similarity_kg.py
+```
+
+| Artifact | Nội dung | Giúp query gì |
+|---|---|---|
+| `popularity.json` | điểm phổ biến mỗi listing + top-N theo quận/segment | **cold-start**, fallback ranking, tie-break |
+| `content_neighbors.json` | top-20 BĐS tương tự theo **embedding thật** (cosine) | "BĐS tương tự", mở rộng candidate tức thì |
+| `co_engagement.json` | item-item từ **hành vi** ("ai contact X cũng contact Y") | gợi ý theo hành vi, bổ sung content |
+| `query_expansion.json` | mỗi attribute → attribute liên quan (từ similarity matrix) | **nới rộng truy vấn**: lọc `near_school` cũng xét `kids_playground` (0.3), `near_park` (0.28) |
+| `segment_affinity.json` | amenity quan trọng theo `segment×intent` | prior cá nhân hoá / re-rank |
+
+Bảng SQLite tra cứu nhanh: `pc_popularity`, `pc_item_neighbor` (60.6k dòng), `pc_query_expansion`.
+Idempotent (ghi đè file + `INSERT OR REPLACE`). Dùng embeddings đã **dedup** listing_id trùng để BĐS không tự làm hàng xóm của chính nó.
 
 ---
 

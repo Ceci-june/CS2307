@@ -1,0 +1,68 @@
+{
+  "pairs_compared": 24,
+  "spearman_declared_vs_behavior": -0.342,
+  "agree_within_0.2": 5,
+  "agree_ratio": 0.208,
+  "top_disagreements": [
+    {
+      "pair": "near_mall↔near_park",
+      "declared": 0.22,
+      "empirical": 0.917,
+      "abs_diff": 0.697
+    },
+    {
+      "pair": "park_view↔city_view",
+      "declared": 0.26,
+      "empirical": 0.906,
+      "abs_diff": 0.646
+    },
+    {
+      "pair": "near_school↔kids_playground",
+      "declared": 0.3,
+      "empirical": 0.92,
+      "abs_diff": 0.62
+    },
+    {
+      "pair": "elevator↔parking",
+      "declared": 0.25,
+      "empirical": 0.826,
+      "abs_diff": 0.576
+    },
+    {
+      "pair": "sports_court↔park",
+      "declared": 0.38,
+      "empirical": 0.952,
+      "abs_diff": 0.572
+    },
+    {
+      "pair": "garden↔near_park",
+      "declared": 0.4,
+      "empirical": 0.905,
+      "abs_diff": 0.505
+    },
+    {
+      "pair": "near_school↔near_park",
+      "declared": 0.28,
+      "empirical": 0.784,
+      "abs_diff": 0.504
+    },
+    {
+      "pair": "park↔bbq",
+      "declared": 0.42,
+      "empirical": 0.912,
+      "abs_diff": 0.492
+    },
+    {
+      "pair": "garden↔park",
+      "declared": 0.35,
+      "empirical": 0.781,
+      "abs_diff": 0.431
+    },
+    {
+      "pair": "near_metro↔near_highway",
+      "declared": 0.44,
+      "empirical": 0.866,
+      "abs_diff": 0.426
+    }
+  ]
+}

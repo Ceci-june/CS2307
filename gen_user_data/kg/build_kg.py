@@ -93,7 +93,35 @@ def build(users: List[UserProfile], listings: List[Listing],
                  intent=it.context.inferred_intent)
         add_edge("User", it.user_id, "SEARCHED", "Query", qid)
 
+    # --- Similarity edges (task 1.3): nạp nếu đã chạy similarity_kg.py ---
+    _add_similarity_edges(add_node, add_edge)
+
     return nodes, edges
+
+
+def _add_similarity_edges(add_node, add_edge):
+    """Thêm cạnh tương đồng vào KG (nếu file đã sinh bởi similarity_kg.py):
+      * Amenity -[SIMILAR_TO {weight}]- Amenity      (declared, knowledge.py)
+      * Criterion -[SIMILAR_TO {weight}]- Criterion  (declared, ngữ nghĩa)
+      * Location -[SIMILAR_LOCATION {weight}]- Location (từ hành vi)
+    """
+    sim_path = os.path.join(KG_DIR, "similarity_edges.json")
+    loc_path = os.path.join(KG_DIR, "location_similarity_edges.json")
+    if os.path.exists(sim_path):
+        with open(sim_path, encoding="utf-8") as f:
+            for e in json.load(f):
+                label = "Amenity" if e["group"] == "amenity" else "Criterion"
+                add_node(e["attr_a"], label)
+                add_node(e["attr_b"], label)
+                add_edge(label, e["attr_a"], "SIMILAR_TO", label, e["attr_b"],
+                         weight=e["weight"], source=e["source"])
+    if os.path.exists(loc_path):
+        with open(loc_path, encoding="utf-8") as f:
+            for e in json.load(f):
+                add_node(e["attr_a"], "Location")
+                add_node(e["attr_b"], "Location")
+                add_edge("Location", e["attr_a"], "SIMILAR_LOCATION", "Location",
+                         e["attr_b"], weight=e["weight"], source=e["source"])
 
 
 def _write_csv(nodes, edges):

@@ -19,12 +19,19 @@ from generation.generate_interactions import (  # noqa: E402
     save_interactions,
     _report as report_interactions,
 )
+from generation.llm_client import LLMClient  # noqa: E402
+from generation.enrich import enrich_personas, enrich_descriptions  # noqa: E402
+
+# Giới hạn số listing sinh description bằng LLM (tránh tốn token). 0 = không sinh.
+LLM_MAX_LISTINGS_DESC = int(os.getenv("LLM_MAX_LISTINGS_DESC", "150"))
 
 
 def main(limit_listings: int | None = None):
+    llm = LLMClient()
+    print(f"[llm] {llm.status()}")
+
     print("== 1/4 Building listing catalog (real listing_ids) ==")
     catalog = build_catalog(limit=limit_listings)
-    save_catalog(catalog)
     seg = {}
     for l in catalog:
         seg[l.budget_group] = seg.get(l.budget_group, 0) + 1
@@ -32,6 +39,9 @@ def main(limit_listings: int | None = None):
 
     print("\n== 2/4 Generating users ==")
     users = generate_users()
+    if llm.enabled:
+        n = enrich_personas(users, llm)
+        print(f"  [llm] persona: {n}/{len(users)} user")
     save_users(users)
     report_users(users)
 
@@ -40,7 +50,20 @@ def main(limit_listings: int | None = None):
     save_interactions(interactions)
     report_interactions(interactions)
 
-    print("\n== 4/4 Building knowledge graph ==")
+    # LLM mô tả CHỈ các listing được tương tác (có nghĩa hơn 150 căn đầu ngẫu nhiên).
+    if llm.enabled and LLM_MAX_LISTINGS_DESC > 0:
+        interacted = {it.listing_id for it in interactions}
+        subset = [l for l in catalog if l.listing_id in interacted]
+        n = enrich_descriptions(subset, llm, limit=LLM_MAX_LISTINGS_DESC)
+        print(f"  [llm] description: {n}/{len(subset)} listing được tương tác "
+              f"(giới hạn LLM_MAX_LISTINGS_DESC={LLM_MAX_LISTINGS_DESC})")
+    save_catalog(catalog)
+
+    print("\n== 4/5 Similarity matrix -> edges + kiểm chứng hành vi ==")
+    import similarity_kg
+    similarity_kg.main()
+
+    print("\n== 5/5 Building knowledge graph (gồm cạnh similarity) ==")
     # import trễ để tránh vòng phụ thuộc khi chỉ dùng generator
     from kg.build_kg import build, _write_csv, _write_cypher
     nodes, edges = build(users, catalog, interactions)

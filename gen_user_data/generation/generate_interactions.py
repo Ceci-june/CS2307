@@ -177,7 +177,8 @@ def generate_interactions(
                 raw_query=qgen.generate(
                     intent=intent, district=listing.district,
                     price=listing.price_billion, beds=listing.bedrooms,
-                    property_type=listing.property_type),
+                    property_type=listing.property_type,
+                    price_tier=listing.price_tier_area),
                 filters_applied=_filters_from_user(user),
                 inferred_intent=intent,
                 budget_group=user.segment,
@@ -202,9 +203,50 @@ def generate_interactions(
             )
             evt_counter += 1
 
+    # LLM (tuỳ chọn): thay raw_query template bằng câu tự nhiên. Dedup theo spec
+    # + batch để tiết kiệm token; lỗi thì giữ nguyên câu template.
+    if qgen.llm.enabled:
+        n = _llm_rewrite_queries(interactions, listing_by_id, qgen)
+        print(f"[interactions] LLM raw_query: đã sinh {n}/{len(interactions)} (còn lại giữ template)")
+
     # Sắp theo timestamp để tiện temporal split.
     interactions.sort(key=lambda x: x.timestamp)
     return interactions
+
+
+def _llm_rewrite_queries(interactions, listing_by_id, qgen, batch=25) -> int:
+    """Sinh raw_query bằng LLM, dedup theo (intent, district, price, beds, ptype)."""
+    from generation.llm_client import _TIER_HINT_VI
+    uniq = {}  # key -> spec
+    key_of = {}  # interaction_id -> key
+    for it in interactions:
+        l = listing_by_id.get(it.listing_id)
+        if not l:
+            continue
+        tier = l.price_tier_area or "mid"
+        # dedup theo (intent, quận, TIER giá tương đối, số phòng, loại) — bỏ giá tuyệt đối
+        key = (it.context.inferred_intent, l.district, tier, l.bedrooms, l.property_type)
+        key_of[it.interaction_id] = key
+        if key not in uniq:
+            uniq[key] = {"intent": key[0], "district": key[1],
+                         "price_hint": _TIER_HINT_VI.get(tier, tier),
+                         "bedrooms": key[3], "type": key[4]}
+    keys = list(uniq)
+    text_by_key = {}
+    for i in range(0, len(keys), batch):
+        chunk = keys[i:i + batch]
+        specs = [uniq[k] for k in chunk]
+        out = qgen.llm_batch(specs)
+        if out:
+            for k, txt in zip(chunk, out):
+                text_by_key[k] = txt
+    done = 0
+    for it in interactions:
+        k = key_of.get(it.interaction_id)
+        if k in text_by_key:
+            it.context.raw_query = text_by_key[k]
+            done += 1
+    return done
 
 
 def save_interactions(items: List[Interaction], path: str = INTERACTIONS_PATH) -> None:

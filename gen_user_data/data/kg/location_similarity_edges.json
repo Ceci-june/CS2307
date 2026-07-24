@@ -1,0 +1,149 @@
+[
+  {
+    "attr_a": "Phường Dĩ An",
+    "attr_b": "Quận 3",
+    "weight": 0.923,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Phường Dĩ An",
+    "attr_b": "Quận Tân Bình",
+    "weight": 0.823,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Phường Dĩ An",
+    "attr_b": "Quận Thủ Đức",
+    "weight": 0.788,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Phường Long Bình",
+    "attr_b": "Quận 1",
+    "weight": 0.908,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Phường Long Bình",
+    "attr_b": "Quận 9",
+    "weight": 0.751,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Phường Long Bình",
+    "attr_b": "Quận 7",
+    "weight": 0.509,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 1",
+    "attr_b": "Quận 9",
+    "weight": 0.811,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 1",
+    "attr_b": "Quận 2",
+    "weight": 0.621,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 2",
+    "attr_b": "Quận Bình Thạnh",
+    "weight": 0.765,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 2",
+    "attr_b": "Quận Thủ Đức",
+    "weight": 0.734,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 3",
+    "attr_b": "Quận Thủ Đức",
+    "weight": 0.877,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 3",
+    "attr_b": "Quận Tân Bình",
+    "weight": 0.708,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 7",
+    "attr_b": "Quận Tân Bình",
+    "weight": 0.84,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 7",
+    "attr_b": "Quận Gò Vấp",
+    "weight": 0.814,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Phường Dĩ An",
+    "attr_b": "Quận 7",
+    "weight": 0.713,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 7",
+    "attr_b": "Quận 9",
+    "weight": 0.707,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận Bình Thạnh",
+    "attr_b": "Quận Tân Bình",
+    "weight": 0.545,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận 7",
+    "attr_b": "Quận Bình Thạnh",
+    "weight": 0.466,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận Gò Vấp",
+    "attr_b": "Quận Tân Bình",
+    "weight": 0.748,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Phường Dĩ An",
+    "attr_b": "Quận Gò Vấp",
+    "weight": 0.719,
+    "group": "location",
+    "source": "behavior(interactions)"
+  },
+  {
+    "attr_a": "Quận Thủ Đức",
+    "attr_b": "Quận Tân Bình",
+    "weight": 0.78,
+    "group": "location",
+    "source": "behavior(interactions)"
+  }
+]
