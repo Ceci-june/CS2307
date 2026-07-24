@@ -18,10 +18,17 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
 CSV_DIR = os.path.join(DATA_DIR, "csv")
+KG_DIR = os.path.join(DATA_DIR, "kg")
+PC_DIR = os.path.join(DATA_DIR, "precomputed")
 
 
 def _read(name):
     with open(os.path.join(DATA_DIR, name), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _read_path(path):
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -90,21 +97,84 @@ def export_eval() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+# --- Similarity edges (declared + location) ---------------------------------
+def export_similarity_edges() -> pd.DataFrame:
+    rows = []
+    for fname in ("similarity_edges.json", "location_similarity_edges.json"):
+        path = os.path.join(KG_DIR, fname)
+        if os.path.exists(path):
+            rows += _read_path(path)
+    return pd.DataFrame(rows)
+
+
+# --- Precomputed artifacts (nếu đã chạy precompute.py) ----------------------
+def export_content_neighbors() -> pd.DataFrame:
+    path = os.path.join(PC_DIR, "content_neighbors.json")
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    rows = [{"listing_id": int(lid), "rank": r, "neighbor_id": n["listing_id"], "sim": n["sim"]}
+            for lid, nbrs in _read_path(path).items() for r, n in enumerate(nbrs)]
+    return pd.DataFrame(rows)
+
+
+def export_co_engagement() -> pd.DataFrame:
+    path = os.path.join(PC_DIR, "co_engagement.json")
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    rows = [{"listing_id": int(lid), "rank": r, "neighbor_id": n["listing_id"], "score": n["score"]}
+            for lid, nbrs in _read_path(path).items() for r, n in enumerate(nbrs)]
+    return pd.DataFrame(rows)
+
+
+def export_popularity() -> pd.DataFrame:
+    path = os.path.join(PC_DIR, "popularity.json")
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    per = _read_path(path).get("per_listing", {})
+    return pd.DataFrame([{"listing_id": int(k), "popularity": v} for k, v in per.items()])
+
+
+def export_query_expansion() -> pd.DataFrame:
+    path = os.path.join(PC_DIR, "query_expansion.json")
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    rows = [{"attr": a, "related": e["attr"], "weight": e["weight"], "group": e["group"]}
+            for a, exps in _read_path(path).items() for e in exps]
+    return pd.DataFrame(rows)
+
+
+def export_segment_affinity() -> pd.DataFrame:
+    path = os.path.join(PC_DIR, "segment_affinity.json")
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    rows = [{"segment_intent": k, "amenity": e["amenity"], "affinity": e["affinity"]}
+            for k, items in _read_path(path).items() for e in items]
+    return pd.DataFrame(rows)
+
+
 def main():
     os.makedirs(CSV_DIR, exist_ok=True)
-    exporters = {
-        "users.csv": export_users,
-        "listings.csv": export_listings,
-        "interactions.csv": export_interactions,
-        "eval_results.csv": export_eval,
-    }
-    for fname, fn in exporters.items():
+    # (tên file, hàm, bắt buộc?) — không bắt buộc thì thiếu nguồn sẽ bỏ qua
+    exporters = [
+        ("users.csv", export_users, True),
+        ("listings.csv", export_listings, True),
+        ("interactions.csv", export_interactions, True),
+        ("eval_results.csv", export_eval, False),
+        ("similarity_edges.csv", export_similarity_edges, False),
+        ("content_neighbors.csv", export_content_neighbors, False),
+        ("co_engagement.csv", export_co_engagement, False),
+        ("popularity.csv", export_popularity, False),
+        ("query_expansion.csv", export_query_expansion, False),
+        ("segment_affinity.csv", export_segment_affinity, False),
+    ]
+    for fname, fn, required in exporters:
         df = fn()
-        if df.empty and fname == "eval_results.csv":
+        if df.empty and not required:
+            print(f"[csv] {fname:<24} (bỏ qua — chưa có nguồn)")
             continue
         out = os.path.join(CSV_DIR, fname)
         df.to_csv(out, index=False, encoding="utf-8-sig")  # utf-8-sig để Excel đọc tiếng Việt
-        print(f"[csv] {fname:<20} {len(df):>5} rows x {len(df.columns):>2} cols -> {out}")
+        print(f"[csv] {fname:<24} {len(df):>6} rows x {len(df.columns):>2} cols -> {out}")
 
 
 if __name__ == "__main__":

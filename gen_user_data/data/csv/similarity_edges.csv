@@ -1,0 +1,125 @@
+﻿attr_a,attr_b,weight,group,source
+garage,parking,0.85,amenity,knowledge.py
+balcony,terrace,0.65,amenity,knowledge.py
+garden,near_park,0.4,amenity,knowledge.py
+garden,park,0.35,amenity,knowledge.py
+gym,sports_court,0.9,amenity,knowledge.py
+gym,park,0.45,amenity,knowledge.py
+gym,pool,0.35,amenity,knowledge.py
+park,kids_playground,0.78,amenity,knowledge.py
+park,bbq,0.42,amenity,knowledge.py
+kids_playground,bbq,0.3,amenity,knowledge.py
+security_24h,reception,0.55,amenity,knowledge.py
+pool,park,0.32,amenity,knowledge.py
+sports_court,park,0.38,amenity,knowledge.py
+near_metro,near_bus,0.68,amenity,knowledge.py
+near_metro,near_highway,0.44,amenity,knowledge.py
+near_bus,near_highway,0.4,amenity,knowledge.py
+near_mall,near_market,0.74,amenity,knowledge.py
+near_mall,near_park,0.22,amenity,knowledge.py
+near_school,near_park,0.28,amenity,knowledge.py
+near_school,kids_playground,0.3,amenity,knowledge.py
+near_park,park,0.52,amenity,knowledge.py
+river_view,park_view,0.54,amenity,knowledge.py
+park_view,city_view,0.26,amenity,knowledge.py
+elevator,parking,0.25,amenity,knowledge.py
+gia_thap,gia_trung_binh,0.5,criteria,similarity_matrix_v2.py
+gia_trung_binh,gia_cao,0.5,criteria,similarity_matrix_v2.py
+gia_cao,gia_rat_cao,0.5,criteria,similarity_matrix_v2.py
+gia_thap,gia_cao,0.15,criteria,similarity_matrix_v2.py
+gia_thap,gia_rat_cao,0.0,criteria,similarity_matrix_v2.py
+gia_trung_binh,gia_rat_cao,0.15,criteria,similarity_matrix_v2.py
+gia_thap,don_gia_thap,0.7,criteria,similarity_matrix_v2.py
+gia_rat_cao,don_gia_cao,0.7,criteria,similarity_matrix_v2.py
+gia_cao,don_gia_cao,0.5,criteria,similarity_matrix_v2.py
+gia_trung_binh,don_gia_thap,0.4,criteria,similarity_matrix_v2.py
+don_gia_thap,don_gia_cao,0.0,criteria,similarity_matrix_v2.py
+dien_tich_nho,dien_tich_vua,0.5,criteria,similarity_matrix_v2.py
+dien_tich_vua,dien_tich_lon,0.5,criteria,similarity_matrix_v2.py
+dien_tich_lon,dien_tich_rat_lon,0.5,criteria,similarity_matrix_v2.py
+dien_tich_nho,dien_tich_lon,0.15,criteria,similarity_matrix_v2.py
+dien_tich_nho,dien_tich_rat_lon,0.0,criteria,similarity_matrix_v2.py
+dien_tich_vua,dien_tich_rat_lon,0.15,criteria,similarity_matrix_v2.py
+dien_tich_nho,it_phong_ngu,0.75,criteria,similarity_matrix_v2.py
+dien_tich_lon,nhieu_phong_ngu,0.75,criteria,similarity_matrix_v2.py
+dien_tich_rat_lon,nhieu_phong_ngu,0.8,criteria,similarity_matrix_v2.py
+dien_tich_vua,it_phong_ngu,0.4,criteria,similarity_matrix_v2.py
+dien_tich_vua,nhieu_phong_ngu,0.35,criteria,similarity_matrix_v2.py
+it_phong_ngu,nhieu_phong_ngu,0.0,criteria,similarity_matrix_v2.py
+gia_thap,dien_tich_nho,0.55,criteria,similarity_matrix_v2.py
+gia_cao,dien_tich_lon,0.5,criteria,similarity_matrix_v2.py
+gia_rat_cao,dien_tich_rat_lon,0.5,criteria,similarity_matrix_v2.py
+gia_trung_binh,dien_tich_vua,0.45,criteria,similarity_matrix_v2.py
+don_gia_cao,vi_tri_trung_tam,0.6,criteria,similarity_matrix_v2.py
+gan_truong_hoc,tien_ich_giao_duc,0.85,criteria,similarity_matrix_v2.py
+gan_benh_vien,tien_ich_y_te,0.85,criteria,similarity_matrix_v2.py
+gan_sieu_thi,tien_ich_thuong_mai,0.85,criteria,similarity_matrix_v2.py
+gan_cong_vien,tien_ich_giai_tri,0.7,criteria,similarity_matrix_v2.py
+co_ho_boi,tien_ich_giai_tri,0.75,criteria,similarity_matrix_v2.py
+co_gym,tien_ich_giai_tri,0.7,criteria,similarity_matrix_v2.py
+co_ho_boi,co_gym,0.65,criteria,similarity_matrix_v2.py
+view_dep,gan_cong_vien,0.5,criteria,similarity_matrix_v2.py
+an_ninh_tot,noi_that_day_du,0.4,criteria,similarity_matrix_v2.py
+co_ho_boi,view_dep,0.45,criteria,similarity_matrix_v2.py
+noi_that_day_du,noi_that_co_ban,0.0,criteria,similarity_matrix_v2.py
+tien_ich_giao_duc,tien_ich_y_te,0.35,criteria,similarity_matrix_v2.py
+tien_ich_giao_duc,tien_ich_thuong_mai,0.4,criteria,similarity_matrix_v2.py
+tien_ich_y_te,tien_ich_thuong_mai,0.35,criteria,similarity_matrix_v2.py
+tien_ich_thuong_mai,tien_ich_giai_tri,0.45,criteria,similarity_matrix_v2.py
+tien_ich_giao_thong,tien_ich_thuong_mai,0.4,criteria,similarity_matrix_v2.py
+tien_ich_giao_thong,tien_ich_giao_duc,0.3,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,tien_ich_thuong_mai,0.65,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,tien_ich_giai_tri,0.55,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,tien_ich_giao_thong,0.6,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,tien_ich_y_te,0.5,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,tien_ich_giao_duc,0.45,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,an_ninh_tot,0.4,criteria,similarity_matrix_v2.py
+vi_tri_can_trung_tam,tien_ich_giao_thong,0.5,criteria,similarity_matrix_v2.py
+vi_tri_can_trung_tam,tien_ich_thuong_mai,0.45,criteria,similarity_matrix_v2.py
+vi_tri_ngoai_thanh,dien_tich_lon,0.5,criteria,similarity_matrix_v2.py
+vi_tri_ngoai_thanh,gia_thap,0.55,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,vi_tri_can_trung_tam,0.45,criteria,similarity_matrix_v2.py
+vi_tri_can_trung_tam,vi_tri_ngoai_thanh,0.4,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,vi_tri_ngoai_thanh,0.1,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,gia_cao,0.55,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,gia_rat_cao,0.6,criteria,similarity_matrix_v2.py
+vi_tri_trung_tam,gia_thap,0.05,criteria,similarity_matrix_v2.py
+vi_tri_ngoai_thanh,gia_rat_cao,0.05,criteria,similarity_matrix_v2.py
+huong_tot,huong_xau,0.0,criteria,similarity_matrix_v2.py
+huong_tot,view_dep,0.35,criteria,similarity_matrix_v2.py
+huong_tot,gia_cao,0.25,criteria,similarity_matrix_v2.py
+so_hong_rieng,so_chung,0.3,criteria,similarity_matrix_v2.py
+so_hong_rieng,hop_dong_mua_ban,0.15,criteria,similarity_matrix_v2.py
+so_hong_rieng,dang_cho_so,0.2,criteria,similarity_matrix_v2.py
+so_chung,hop_dong_mua_ban,0.35,criteria,similarity_matrix_v2.py
+so_chung,dang_cho_so,0.4,criteria,similarity_matrix_v2.py
+hop_dong_mua_ban,dang_cho_so,0.6,criteria,similarity_matrix_v2.py
+so_hong_rieng,gia_cao,0.35,criteria,similarity_matrix_v2.py
+hop_dong_mua_ban,gia_thap,0.4,criteria,similarity_matrix_v2.py
+dang_cho_so,gia_thap,0.35,criteria,similarity_matrix_v2.py
+gia_rat_cao,noi_that_day_du,0.5,criteria,similarity_matrix_v2.py
+gia_rat_cao,co_ho_boi,0.45,criteria,similarity_matrix_v2.py
+gia_rat_cao,co_gym,0.4,criteria,similarity_matrix_v2.py
+gia_rat_cao,view_dep,0.5,criteria,similarity_matrix_v2.py
+gia_thap,noi_that_co_ban,0.45,criteria,similarity_matrix_v2.py
+Phường Dĩ An,Quận 3,0.923,location,behavior(interactions)
+Phường Dĩ An,Quận Tân Bình,0.823,location,behavior(interactions)
+Phường Dĩ An,Quận Thủ Đức,0.788,location,behavior(interactions)
+Phường Long Bình,Quận 1,0.908,location,behavior(interactions)
+Phường Long Bình,Quận 9,0.751,location,behavior(interactions)
+Phường Long Bình,Quận 7,0.509,location,behavior(interactions)
+Quận 1,Quận 9,0.811,location,behavior(interactions)
+Quận 1,Quận 2,0.621,location,behavior(interactions)
+Quận 2,Quận Bình Thạnh,0.765,location,behavior(interactions)
+Quận 2,Quận Thủ Đức,0.734,location,behavior(interactions)
+Quận 3,Quận Thủ Đức,0.877,location,behavior(interactions)
+Quận 3,Quận Tân Bình,0.708,location,behavior(interactions)
+Quận 7,Quận Tân Bình,0.84,location,behavior(interactions)
+Quận 7,Quận Gò Vấp,0.814,location,behavior(interactions)
+Phường Dĩ An,Quận 7,0.713,location,behavior(interactions)
+Quận 7,Quận 9,0.707,location,behavior(interactions)
+Quận Bình Thạnh,Quận Tân Bình,0.545,location,behavior(interactions)
+Quận 7,Quận Bình Thạnh,0.466,location,behavior(interactions)
+Quận Gò Vấp,Quận Tân Bình,0.748,location,behavior(interactions)
+Phường Dĩ An,Quận Gò Vấp,0.719,location,behavior(interactions)
+Quận Thủ Đức,Quận Tân Bình,0.78,location,behavior(interactions)

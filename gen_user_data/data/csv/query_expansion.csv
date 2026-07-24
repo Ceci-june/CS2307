@@ -1,0 +1,217 @@
+﻿attr,related,weight,group
+garage,parking,0.85,amenity
+parking,garage,0.85,amenity
+parking,elevator,0.25,amenity
+balcony,terrace,0.65,amenity
+terrace,balcony,0.65,amenity
+garden,near_park,0.4,amenity
+garden,park,0.35,amenity
+near_park,park,0.52,amenity
+near_park,garden,0.4,amenity
+near_park,near_school,0.28,amenity
+park,kids_playground,0.78,amenity
+park,near_park,0.52,amenity
+park,gym,0.45,amenity
+park,bbq,0.42,amenity
+park,sports_court,0.38,amenity
+park,garden,0.35,amenity
+park,pool,0.32,amenity
+gym,sports_court,0.9,amenity
+gym,park,0.45,amenity
+gym,pool,0.35,amenity
+sports_court,gym,0.9,amenity
+sports_court,park,0.38,amenity
+pool,gym,0.35,amenity
+pool,park,0.32,amenity
+kids_playground,park,0.78,amenity
+kids_playground,bbq,0.3,amenity
+kids_playground,near_school,0.3,amenity
+bbq,park,0.42,amenity
+bbq,kids_playground,0.3,amenity
+security_24h,reception,0.55,amenity
+reception,security_24h,0.55,amenity
+near_metro,near_bus,0.68,amenity
+near_metro,near_highway,0.44,amenity
+near_bus,near_metro,0.68,amenity
+near_bus,near_highway,0.4,amenity
+near_highway,near_metro,0.44,amenity
+near_highway,near_bus,0.4,amenity
+near_mall,near_market,0.74,amenity
+near_market,near_mall,0.74,amenity
+near_school,kids_playground,0.3,amenity
+near_school,near_park,0.28,amenity
+river_view,park_view,0.54,amenity
+park_view,river_view,0.54,amenity
+park_view,city_view,0.26,amenity
+city_view,park_view,0.26,amenity
+elevator,parking,0.25,amenity
+gia_thap,don_gia_thap,0.7,criteria
+gia_thap,dien_tich_nho,0.55,criteria
+gia_thap,vi_tri_ngoai_thanh,0.55,criteria
+gia_thap,gia_trung_binh,0.5,criteria
+gia_thap,noi_that_co_ban,0.45,criteria
+gia_thap,hop_dong_mua_ban,0.4,criteria
+gia_thap,dang_cho_so,0.35,criteria
+gia_trung_binh,gia_thap,0.5,criteria
+gia_trung_binh,gia_cao,0.5,criteria
+gia_trung_binh,dien_tich_vua,0.45,criteria
+gia_trung_binh,don_gia_thap,0.4,criteria
+gia_cao,vi_tri_trung_tam,0.55,criteria
+gia_cao,gia_trung_binh,0.5,criteria
+gia_cao,gia_rat_cao,0.5,criteria
+gia_cao,don_gia_cao,0.5,criteria
+gia_cao,dien_tich_lon,0.5,criteria
+gia_cao,so_hong_rieng,0.35,criteria
+gia_cao,huong_tot,0.25,criteria
+gia_rat_cao,don_gia_cao,0.7,criteria
+gia_rat_cao,vi_tri_trung_tam,0.6,criteria
+gia_rat_cao,gia_cao,0.5,criteria
+gia_rat_cao,dien_tich_rat_lon,0.5,criteria
+gia_rat_cao,noi_that_day_du,0.5,criteria
+gia_rat_cao,view_dep,0.5,criteria
+gia_rat_cao,co_ho_boi,0.45,criteria
+gia_rat_cao,co_gym,0.4,criteria
+don_gia_thap,gia_thap,0.7,criteria
+don_gia_thap,gia_trung_binh,0.4,criteria
+don_gia_cao,gia_rat_cao,0.7,criteria
+don_gia_cao,vi_tri_trung_tam,0.6,criteria
+don_gia_cao,gia_cao,0.5,criteria
+dien_tich_nho,it_phong_ngu,0.75,criteria
+dien_tich_nho,gia_thap,0.55,criteria
+dien_tich_nho,dien_tich_vua,0.5,criteria
+dien_tich_vua,dien_tich_nho,0.5,criteria
+dien_tich_vua,dien_tich_lon,0.5,criteria
+dien_tich_vua,gia_trung_binh,0.45,criteria
+dien_tich_vua,it_phong_ngu,0.4,criteria
+dien_tich_vua,nhieu_phong_ngu,0.35,criteria
+dien_tich_lon,nhieu_phong_ngu,0.75,criteria
+dien_tich_lon,dien_tich_vua,0.5,criteria
+dien_tich_lon,dien_tich_rat_lon,0.5,criteria
+dien_tich_lon,gia_cao,0.5,criteria
+dien_tich_lon,vi_tri_ngoai_thanh,0.5,criteria
+dien_tich_rat_lon,nhieu_phong_ngu,0.8,criteria
+dien_tich_rat_lon,dien_tich_lon,0.5,criteria
+dien_tich_rat_lon,gia_rat_cao,0.5,criteria
+it_phong_ngu,dien_tich_nho,0.75,criteria
+it_phong_ngu,dien_tich_vua,0.4,criteria
+nhieu_phong_ngu,dien_tich_rat_lon,0.8,criteria
+nhieu_phong_ngu,dien_tich_lon,0.75,criteria
+nhieu_phong_ngu,dien_tich_vua,0.35,criteria
+vi_tri_trung_tam,tien_ich_thuong_mai,0.65,criteria
+vi_tri_trung_tam,don_gia_cao,0.6,criteria
+vi_tri_trung_tam,tien_ich_giao_thong,0.6,criteria
+vi_tri_trung_tam,gia_rat_cao,0.6,criteria
+vi_tri_trung_tam,tien_ich_giai_tri,0.55,criteria
+vi_tri_trung_tam,gia_cao,0.55,criteria
+vi_tri_trung_tam,tien_ich_y_te,0.5,criteria
+vi_tri_trung_tam,tien_ich_giao_duc,0.45,criteria
+vi_tri_trung_tam,vi_tri_can_trung_tam,0.45,criteria
+vi_tri_trung_tam,an_ninh_tot,0.4,criteria
+gan_truong_hoc,tien_ich_giao_duc,0.85,criteria
+tien_ich_giao_duc,gan_truong_hoc,0.85,criteria
+tien_ich_giao_duc,vi_tri_trung_tam,0.45,criteria
+tien_ich_giao_duc,tien_ich_thuong_mai,0.4,criteria
+tien_ich_giao_duc,tien_ich_y_te,0.35,criteria
+tien_ich_giao_duc,tien_ich_giao_thong,0.3,criteria
+gan_benh_vien,tien_ich_y_te,0.85,criteria
+tien_ich_y_te,gan_benh_vien,0.85,criteria
+tien_ich_y_te,vi_tri_trung_tam,0.5,criteria
+tien_ich_y_te,tien_ich_giao_duc,0.35,criteria
+tien_ich_y_te,tien_ich_thuong_mai,0.35,criteria
+gan_sieu_thi,tien_ich_thuong_mai,0.85,criteria
+tien_ich_thuong_mai,gan_sieu_thi,0.85,criteria
+tien_ich_thuong_mai,vi_tri_trung_tam,0.65,criteria
+tien_ich_thuong_mai,tien_ich_giai_tri,0.45,criteria
+tien_ich_thuong_mai,vi_tri_can_trung_tam,0.45,criteria
+tien_ich_thuong_mai,tien_ich_giao_duc,0.4,criteria
+tien_ich_thuong_mai,tien_ich_giao_thong,0.4,criteria
+tien_ich_thuong_mai,tien_ich_y_te,0.35,criteria
+gan_cong_vien,tien_ich_giai_tri,0.7,criteria
+gan_cong_vien,view_dep,0.5,criteria
+tien_ich_giai_tri,co_ho_boi,0.75,criteria
+tien_ich_giai_tri,gan_cong_vien,0.7,criteria
+tien_ich_giai_tri,co_gym,0.7,criteria
+tien_ich_giai_tri,vi_tri_trung_tam,0.55,criteria
+tien_ich_giai_tri,tien_ich_thuong_mai,0.45,criteria
+co_ho_boi,tien_ich_giai_tri,0.75,criteria
+co_ho_boi,co_gym,0.65,criteria
+co_ho_boi,view_dep,0.45,criteria
+co_ho_boi,gia_rat_cao,0.45,criteria
+co_gym,tien_ich_giai_tri,0.7,criteria
+co_gym,co_ho_boi,0.65,criteria
+co_gym,gia_rat_cao,0.4,criteria
+view_dep,gan_cong_vien,0.5,criteria
+view_dep,gia_rat_cao,0.5,criteria
+view_dep,co_ho_boi,0.45,criteria
+view_dep,huong_tot,0.35,criteria
+an_ninh_tot,noi_that_day_du,0.4,criteria
+an_ninh_tot,vi_tri_trung_tam,0.4,criteria
+noi_that_day_du,gia_rat_cao,0.5,criteria
+noi_that_day_du,an_ninh_tot,0.4,criteria
+tien_ich_giao_thong,vi_tri_trung_tam,0.6,criteria
+tien_ich_giao_thong,vi_tri_can_trung_tam,0.5,criteria
+tien_ich_giao_thong,tien_ich_thuong_mai,0.4,criteria
+tien_ich_giao_thong,tien_ich_giao_duc,0.3,criteria
+vi_tri_can_trung_tam,tien_ich_giao_thong,0.5,criteria
+vi_tri_can_trung_tam,tien_ich_thuong_mai,0.45,criteria
+vi_tri_can_trung_tam,vi_tri_trung_tam,0.45,criteria
+vi_tri_can_trung_tam,vi_tri_ngoai_thanh,0.4,criteria
+vi_tri_ngoai_thanh,gia_thap,0.55,criteria
+vi_tri_ngoai_thanh,dien_tich_lon,0.5,criteria
+vi_tri_ngoai_thanh,vi_tri_can_trung_tam,0.4,criteria
+huong_tot,view_dep,0.35,criteria
+huong_tot,gia_cao,0.25,criteria
+so_hong_rieng,gia_cao,0.35,criteria
+so_hong_rieng,so_chung,0.3,criteria
+so_chung,dang_cho_so,0.4,criteria
+so_chung,hop_dong_mua_ban,0.35,criteria
+so_chung,so_hong_rieng,0.3,criteria
+hop_dong_mua_ban,dang_cho_so,0.6,criteria
+hop_dong_mua_ban,gia_thap,0.4,criteria
+hop_dong_mua_ban,so_chung,0.35,criteria
+dang_cho_so,hop_dong_mua_ban,0.6,criteria
+dang_cho_so,so_chung,0.4,criteria
+dang_cho_so,gia_thap,0.35,criteria
+noi_that_co_ban,gia_thap,0.45,criteria
+Phường Dĩ An,Quận 3,0.923,location
+Phường Dĩ An,Quận Tân Bình,0.823,location
+Phường Dĩ An,Quận Thủ Đức,0.788,location
+Phường Dĩ An,Quận Gò Vấp,0.719,location
+Phường Dĩ An,Quận 7,0.713,location
+Quận 3,Phường Dĩ An,0.923,location
+Quận 3,Quận Thủ Đức,0.877,location
+Quận 3,Quận Tân Bình,0.708,location
+Quận Tân Bình,Quận 7,0.84,location
+Quận Tân Bình,Phường Dĩ An,0.823,location
+Quận Tân Bình,Quận Thủ Đức,0.78,location
+Quận Tân Bình,Quận Gò Vấp,0.748,location
+Quận Tân Bình,Quận 3,0.708,location
+Quận Tân Bình,Quận Bình Thạnh,0.545,location
+Quận Thủ Đức,Quận 3,0.877,location
+Quận Thủ Đức,Phường Dĩ An,0.788,location
+Quận Thủ Đức,Quận Tân Bình,0.78,location
+Quận Thủ Đức,Quận 2,0.734,location
+Phường Long Bình,Quận 1,0.908,location
+Phường Long Bình,Quận 9,0.751,location
+Phường Long Bình,Quận 7,0.509,location
+Quận 1,Phường Long Bình,0.908,location
+Quận 1,Quận 9,0.811,location
+Quận 1,Quận 2,0.621,location
+Quận 9,Quận 1,0.811,location
+Quận 9,Phường Long Bình,0.751,location
+Quận 9,Quận 7,0.707,location
+Quận 7,Quận Tân Bình,0.84,location
+Quận 7,Quận Gò Vấp,0.814,location
+Quận 7,Phường Dĩ An,0.713,location
+Quận 7,Quận 9,0.707,location
+Quận 7,Phường Long Bình,0.509,location
+Quận 7,Quận Bình Thạnh,0.466,location
+Quận 2,Quận Bình Thạnh,0.765,location
+Quận 2,Quận Thủ Đức,0.734,location
+Quận 2,Quận 1,0.621,location
+Quận Bình Thạnh,Quận 2,0.765,location
+Quận Bình Thạnh,Quận Tân Bình,0.545,location
+Quận Bình Thạnh,Quận 7,0.466,location
+Quận Gò Vấp,Quận 7,0.814,location
+Quận Gò Vấp,Quận Tân Bình,0.748,location
+Quận Gò Vấp,Phường Dĩ An,0.719,location
