@@ -31,3 +31,10 @@ logs/
 
 # Docker
 docker-compose.override.yml
+
+# Third-party reference repo (clone riêng, không commit vào repo này)
+Evaluation-Metrics-for-Recommendation-Systems/
+
+# Không push tài liệu nội bộ / nhật ký công việc
+gen_user_data/recsys_kg_rag_guide.md
+gen_user_data/work_log.html
