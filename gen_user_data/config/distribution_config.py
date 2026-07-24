@@ -13,7 +13,7 @@ from __future__ import annotations
 RANDOM_SEED = 20260723
 
 # --- Quy mô sinh -------------------------------------------------------------
-NUM_USERS = 5
+NUM_USERS = 300
 # Số interaction trung bình mỗi user (Poisson lambda). Clamp về [MIN, MAX].
 INTERACTIONS_PER_USER_LAMBDA = 15
 MIN_INTERACTIONS_PER_USER = 10
@@ -38,9 +38,13 @@ INTENT_WEIGHTS = {
 AGE_GROUP_WEIGHTS = {"20-30": 0.25, "30-40": 0.40, "40-50": 0.22, "50+": 0.13}
 MARITAL_WEIGHTS = {"single": 0.38, "married": 0.62}
 INCOME_WEIGHTS = {"medium": 0.45, "medium_high": 0.40, "high": 0.15}
-# Xác suất có con (conditional trên marital_status)
-P_CHILDREN_IF_MARRIED = 0.7
-P_CHILDREN_IF_SINGLE = 0.05
+# Số con — phân phối theo tình trạng hôn nhân. Dân VN thường 0-3 (giá trị 0-10).
+# married mean ~1.5 con (khớp TFR VN ~2, nhiều nhà 1-2 con).
+CHILDREN_DIST = {
+    "single": {0: 0.92, 1: 0.06, 2: 0.02},
+    "married": {0: 0.20, 1: 0.30, 2: 0.32, 3: 0.14, 4: 0.03, 5: 0.01},
+}
+MAX_CHILDREN = 10
 
 PROPERTY_TYPES = ["Căn hộ", "Nhà phố", "Đất nền", "Biệt thự"]
 PROPERTY_TYPE_WEIGHTS = [0.55, 0.28, 0.10, 0.07]

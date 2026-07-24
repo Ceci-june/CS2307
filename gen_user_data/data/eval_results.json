@@ -1,36 +1,36 @@
 {
-  "cutoff": "2026-04-09T00:16:46Z",
+  "cutoff": "2026-04-06T19:36:19Z",
   "k": 10,
   "num_neg_samples": 100,
   "results": {
     "popularity": {
-      "NDCG@10": 0.5851,
-      "MRR@10": 0.4167,
-      "Recall@10": 1.0,
-      "Precision@10": 0.2,
-      "MAP@10": 0.4522,
-      "HitRate@10": 1.0,
-      "users_evaluated": 3,
+      "NDCG@10": 0.0382,
+      "MRR@10": 0.2575,
+      "Recall@10": 0.0779,
+      "Precision@10": 0.0131,
+      "MAP@10": 0.0238,
+      "HitRate@10": 0.1261,
+      "users_evaluated": 222,
       "engine": "recommenders (cloned repo)"
     },
     "content": {
-      "NDCG@10": 0.0,
-      "MRR@10": 0.0,
-      "Recall@10": 0.0,
-      "Precision@10": 0.0,
-      "MAP@10": 0.0,
-      "HitRate@10": 0.0,
-      "users_evaluated": 3,
+      "NDCG@10": 0.1278,
+      "MRR@10": 0.4279,
+      "Recall@10": 0.2029,
+      "Precision@10": 0.0351,
+      "MAP@10": 0.0861,
+      "HitRate@10": 0.3198,
+      "users_evaluated": 222,
       "engine": "recommenders (cloned repo)"
     },
     "embed_cf": {
-      "NDCG@10": 0.0612,
-      "MRR@10": 0.1,
-      "Recall@10": 0.1667,
-      "Precision@10": 0.0333,
-      "MAP@10": 0.0167,
-      "HitRate@10": 0.3333,
-      "users_evaluated": 3,
+      "NDCG@10": 0.0497,
+      "MRR@10": 0.3008,
+      "Recall@10": 0.0935,
+      "Precision@10": 0.0171,
+      "MAP@10": 0.0272,
+      "HitRate@10": 0.1622,
+      "users_evaluated": 222,
       "engine": "recommenders (cloned repo)"
     }
   }

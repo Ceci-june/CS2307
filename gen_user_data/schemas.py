@@ -68,7 +68,7 @@ class Listing(BaseModel):
 class Demographics(BaseModel):
     age_group: str
     marital_status: str
-    has_children: bool
+    children: int = Field(..., ge=0, le=10)  # số con (VN thường 0-3)
     income_level: str
 
 

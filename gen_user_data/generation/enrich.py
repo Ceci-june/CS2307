@@ -31,7 +31,7 @@ def enrich_personas(users: List[UserProfile], llm: LLMClient) -> int:
         specs = [{
             "segment": u.segment, "intent": u.primary_intent,
             "age": u.demographics.age_group, "marital": u.demographics.marital_status,
-            "children": u.demographics.has_children,
+            "children": u.demographics.children,
             "budget_ty": u.explicit_preferences.budget_range,
             "districts": u.explicit_preferences.preferred_districts,
             "likes": u.explicit_preferences.liked_amenities,

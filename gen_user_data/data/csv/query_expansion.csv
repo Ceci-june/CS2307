@@ -173,45 +173,71 @@ dang_cho_so,hop_dong_mua_ban,0.6,criteria
 dang_cho_so,so_chung,0.4,criteria
 dang_cho_so,gia_thap,0.35,criteria
 noi_that_co_ban,gia_thap,0.45,criteria
-Phường Dĩ An,Quận 3,0.923,location
-Phường Dĩ An,Quận Tân Bình,0.823,location
-Phường Dĩ An,Quận Thủ Đức,0.788,location
-Phường Dĩ An,Quận Gò Vấp,0.719,location
-Phường Dĩ An,Quận 7,0.713,location
-Quận 3,Phường Dĩ An,0.923,location
-Quận 3,Quận Thủ Đức,0.877,location
-Quận 3,Quận Tân Bình,0.708,location
-Quận Tân Bình,Quận 7,0.84,location
-Quận Tân Bình,Phường Dĩ An,0.823,location
-Quận Tân Bình,Quận Thủ Đức,0.78,location
-Quận Tân Bình,Quận Gò Vấp,0.748,location
-Quận Tân Bình,Quận 3,0.708,location
-Quận Tân Bình,Quận Bình Thạnh,0.545,location
-Quận Thủ Đức,Quận 3,0.877,location
-Quận Thủ Đức,Phường Dĩ An,0.788,location
-Quận Thủ Đức,Quận Tân Bình,0.78,location
-Quận Thủ Đức,Quận 2,0.734,location
-Phường Long Bình,Quận 1,0.908,location
-Phường Long Bình,Quận 9,0.751,location
-Phường Long Bình,Quận 7,0.509,location
-Quận 1,Phường Long Bình,0.908,location
-Quận 1,Quận 9,0.811,location
-Quận 1,Quận 2,0.621,location
-Quận 9,Quận 1,0.811,location
-Quận 9,Phường Long Bình,0.751,location
-Quận 9,Quận 7,0.707,location
-Quận 7,Quận Tân Bình,0.84,location
-Quận 7,Quận Gò Vấp,0.814,location
-Quận 7,Phường Dĩ An,0.713,location
-Quận 7,Quận 9,0.707,location
-Quận 7,Phường Long Bình,0.509,location
-Quận 7,Quận Bình Thạnh,0.466,location
-Quận 2,Quận Bình Thạnh,0.765,location
-Quận 2,Quận Thủ Đức,0.734,location
-Quận 2,Quận 1,0.621,location
-Quận Bình Thạnh,Quận 2,0.765,location
-Quận Bình Thạnh,Quận Tân Bình,0.545,location
-Quận Bình Thạnh,Quận 7,0.466,location
-Quận Gò Vấp,Quận 7,0.814,location
-Quận Gò Vấp,Quận Tân Bình,0.748,location
-Quận Gò Vấp,Phường Dĩ An,0.719,location
+Phường An Phú,Quận Tân Bình,0.355,location
+Phường An Phú,Phường Long Bình,0.344,location
+Phường An Phú,Quận Thủ Đức,0.331,location
+Quận Tân Bình,Quận Gò Vấp,0.411,location
+Quận Tân Bình,Quận 9,0.406,location
+Quận Tân Bình,Quận Thủ Đức,0.403,location
+Quận Tân Bình,Phường An Phú,0.355,location
+Phường Long Bình,Quận 7,0.421,location
+Phường Long Bình,Quận 1,0.406,location
+Phường Long Bình,Phường Dĩ An,0.391,location
+Phường Long Bình,Phường An Phú,0.344,location
+Phường Long Bình,Phường Hiệp Bình,0.283,location
+Quận Thủ Đức,Quận 2,0.488,location
+Quận Thủ Đức,Quận 9,0.484,location
+Quận Thủ Đức,Quận 7,0.483,location
+Quận Thủ Đức,Phường Dĩ An,0.441,location
+Quận Thủ Đức,Quận 4,0.433,location
+Quận Thủ Đức,Quận Gò Vấp,0.433,location
+Quận Thủ Đức,Quận Bình Thạnh,0.42,location
+Quận Thủ Đức,Quận Tân Bình,0.403,location
+Quận Thủ Đức,Quận 3,0.383,location
+Quận Thủ Đức,Phường An Phú,0.331,location
+Phường Dĩ An,Quận Thủ Đức,0.441,location
+Phường Dĩ An,Quận 2,0.428,location
+Phường Dĩ An,Quận 7,0.415,location
+Phường Dĩ An,Phường Long Bình,0.391,location
+Quận 2,Quận 7,0.516,location
+Quận 2,Quận 1,0.494,location
+Quận 2,Quận Thủ Đức,0.488,location
+Quận 2,Phường Dĩ An,0.428,location
+Quận 2,Quận 4,0.424,location
+Quận 7,Quận 1,0.531,location
+Quận 7,Quận 2,0.516,location
+Quận 7,Quận 9,0.513,location
+Quận 7,Quận Thủ Đức,0.483,location
+Quận 7,Quận 3,0.465,location
+Quận 7,Phường Long Bình,0.421,location
+Quận 7,Phường Dĩ An,0.415,location
+Phường Hiệp Bình,Quận 4,0.296,location
+Phường Hiệp Bình,Phường Long Bình,0.283,location
+Phường Hiệp Bình,Quận 1,0.273,location
+Quận 4,Quận Thủ Đức,0.433,location
+Quận 4,Quận 2,0.424,location
+Quận 4,Quận 9,0.41,location
+Quận 4,Phường Hiệp Bình,0.296,location
+Quận 1,Quận 7,0.531,location
+Quận 1,Quận 2,0.494,location
+Quận 1,Quận 9,0.483,location
+Quận 1,Quận Bình Thạnh,0.445,location
+Quận 1,Phường Long Bình,0.406,location
+Quận 1,Quận Gò Vấp,0.403,location
+Quận 1,Phường Hiệp Bình,0.273,location
+Quận 9,Quận Bình Thạnh,0.518,location
+Quận 9,Quận 7,0.513,location
+Quận 9,Quận Thủ Đức,0.484,location
+Quận 9,Quận 1,0.483,location
+Quận 9,Quận 3,0.427,location
+Quận 9,Quận 4,0.41,location
+Quận 9,Quận Tân Bình,0.406,location
+Quận 3,Quận 7,0.465,location
+Quận 3,Quận 9,0.427,location
+Quận 3,Quận Thủ Đức,0.383,location
+Quận Bình Thạnh,Quận 9,0.518,location
+Quận Bình Thạnh,Quận 1,0.445,location
+Quận Bình Thạnh,Quận Thủ Đức,0.42,location
+Quận Gò Vấp,Quận Thủ Đức,0.433,location
+Quận Gò Vấp,Quận Tân Bình,0.411,location
+Quận Gò Vấp,Quận 1,0.403,location

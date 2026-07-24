@@ -3877,7 +3877,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Nhà phố Quận 9, 5.5 tỷ, 107.2m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45248655,
@@ -7277,7 +7277,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 2, 16.77 tỷ, 248.4m2, 6 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45057652,
@@ -7997,7 +7997,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Thủ Đức, 1.81 tỷ, 87m2, 1 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45244194,
@@ -10957,7 +10957,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Nhà phố Quận 7, 1.23 tỷ, 46.7m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45057690,
@@ -13677,7 +13677,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Biệt thự Quận 7, 7.37 tỷ, 130.6m2, 5 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44992114,
@@ -15157,7 +15157,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 7, 1.22 tỷ, 49.2m2, 0 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44077990,
@@ -15637,7 +15637,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Thủ Đức, 1.77 tỷ, 59.2m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 43927670,
@@ -16717,7 +16717,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Nhà phố Quận 1, 6.77 tỷ, 101.6m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45100152,
@@ -17677,7 +17677,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 7, 7.15 tỷ, 127.4m2, 4 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44847526,
@@ -19037,7 +19037,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 3, 2.01 tỷ, 55.3m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44904039,
@@ -21357,7 +21357,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Thủ Đức, 2.34 tỷ, 42.4m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44708079,
@@ -23317,7 +23317,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 9, 2.82 tỷ, 68.2m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45124344,
@@ -26517,7 +26517,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 1, 3.01 tỷ, 59.7m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45151591,
@@ -28637,7 +28637,7 @@
       "city_view": true
     },
     "price_tier_area": "cheap",
-    "description": "Nhà phố Quận 7, 2.03 tỷ, 46.8m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45261455,
@@ -28837,7 +28837,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 9, 11.26 tỷ, 179.5m2, 6 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45240198,
@@ -31197,7 +31197,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận Gò Vấp, 2.61 tỷ, 97.2m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45206703,
@@ -33677,7 +33677,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Nhà phố Quận Gò Vấp, 1.89 tỷ, 49.7m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45054263,
@@ -34197,7 +34197,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Nhà phố Quận 2, 2.65 tỷ, 100.6m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44936128,
@@ -34997,7 +34997,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Bình Thạnh, 1.27 tỷ, 50.7m2, 1 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44914549,
@@ -38117,7 +38117,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 3, 1.46 tỷ, 52.1m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44872005,
@@ -38277,7 +38277,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận Thủ Đức 7.19 tỷ, 121.5m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45186591,
@@ -40077,7 +40077,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận Bình Thạnh 2.48 tỷ, 63.2m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44650774,
@@ -40717,7 +40717,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 2 3.4 tỷ, 72.4m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45257726,
@@ -44677,7 +44677,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận Thủ Đức 6.82 tỷ, 119.3m2, 4 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45143438,
@@ -49037,7 +49037,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 1 2.12 tỷ, 82.5m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45160107,
@@ -52437,7 +52437,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Đất nền Quận 2 1.96 tỷ, 61.8m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44488972,
@@ -52877,7 +52877,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Biệt thự Quận 1 2.36 tỷ, 73.7m2, 4 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44596675,
@@ -53877,7 +53877,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận Bình Thạnh 2.66 tỷ, 65.5m2, 4 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45097499,
@@ -54717,7 +54717,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Nhà phố Quận Tân Bình 2.6 tỷ, 61.1m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45143569,
@@ -55077,7 +55077,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Nhà phố Quận 7 1.87 tỷ, 38.9m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45136662,
@@ -55357,7 +55357,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 3 4.47 tỷ, 114.1m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 43900461,
@@ -55477,7 +55477,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Phường Dĩ An 2.6 tỷ, 71.0m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44790440,
@@ -56277,7 +56277,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 2 2.59 tỷ, 75.1m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45189213,
@@ -57077,7 +57077,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Nhà phố Quận 2 1.59 tỷ, 59.4m2, 1 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45229984,
@@ -57717,7 +57717,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Đất nền Quận 1 29.47 tỷ, 384.0m2, 6 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45171086,
@@ -58197,7 +58197,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 2 5.41 tỷ, 93.3m2, 6 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 44995636,
@@ -58637,7 +58637,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận Tân Bình 7.63 tỷ, 131.9m2, 4 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45247303,
@@ -60717,7 +60717,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 3 3.92 tỷ, 72.5m2, 3 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45161542,
@@ -61437,7 +61437,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Thủ Đức 2.26 tỷ, 45.4m2, 4 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45244241,
@@ -65277,7 +65277,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Nhà phố Quận 3 2.25 tỷ, 41.3m2, 2 phòng ngủ"
+    "description": null
   },
   {
     "listing_id": 45154879,
@@ -67237,7 +67237,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận Thủ Đức, 12.6 tỷ, 170.4m2, 6 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 41491999,
@@ -70637,7 +70637,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 2, 2.23 tỷ, 57m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45233273,
@@ -72117,7 +72117,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 7, 5.63 tỷ, 126.6m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45206785,
@@ -74917,7 +74917,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Biệt thự Quận Gò Vấp, 2.46 tỷ, 70.2m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45215802,
@@ -75277,7 +75277,7 @@
       "city_view": true
     },
     "price_tier_area": "cheap",
-    "description": "Đất nền Phường Dĩ An, 2.13 tỷ, 60.6m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45146010,
@@ -75837,7 +75837,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 2, 2.97 tỷ, 90.6m2, 2 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45193243,
@@ -77557,7 +77557,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Đất nền Quận Bình Thạnh, 6.58 tỷ, 99.7m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45224513,
@@ -77677,7 +77677,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Đất nền Quận 9, 27.8 tỷ, 368.3m2, 6 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45204718,
@@ -78557,7 +78557,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Thủ Đức, 2.29 tỷ, 41.2m2, 2 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45222354,
@@ -79677,7 +79677,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Biệt thự Phường Long Bình, 5.29 tỷ, 122.1m2, 4 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45197139,
@@ -80877,7 +80877,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Đất nền Quận Thủ Đức, 24.54 tỷ, 319.1m2, 6 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 42583860,
@@ -81437,7 +81437,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 1, 1.49 tỷ, 48.6m2, 2 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45205943,
@@ -83717,7 +83717,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Nhà phố Quận 9, 28.42 tỷ, 375.2m2, 6 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45218919,
@@ -87557,7 +87557,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Biệt thự Quận 9, 1.78 tỷ, 55.4m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45213268,
@@ -87997,7 +87997,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Nhà phố Quận 7, 1.33 tỷ, 84m2, 1 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 43377676,
@@ -88317,7 +88317,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Thủ Đức, 1.89 tỷ, 40.5m2, 1 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45211836,
@@ -91157,7 +91157,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Nhà phố Quận 2, 2.31 tỷ, 83m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 44247860,
@@ -91677,7 +91677,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 2, 2.42 tỷ, 36m2, 2 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 45179386,
@@ -94557,7 +94557,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 3, 1.81 tỷ, 56m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 43550205,
@@ -96317,7 +96317,7 @@
       "city_view": true
     },
     "price_tier_area": "mid",
-    "description": "Nhà phố Phường Dĩ An, 3.13 tỷ, 67.2m2, 3 phòng ngủ."
+    "description": null
   },
   {
     "listing_id": 44518664,
@@ -96677,7 +96677,7 @@
       "city_view": true
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 9, 1.9 tỷ, 54.6m2, gym, city view"
+    "description": null
   },
   {
     "listing_id": 44489969,
@@ -96997,7 +96997,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Gò Vấp, 1.86 tỷ, 64.5m2, gần đường xe buýt, gần cao tốc"
+    "description": null
   },
   {
     "listing_id": 44778893,
@@ -98237,7 +98237,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận Thủ Đức, 5.12 tỷ, 98.9m2, 2 phòng ngủ, gần trường học, gần bệnh viện"
+    "description": null
   },
   {
     "listing_id": 43381561,
@@ -98277,7 +98277,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận Tân Bình, 2.28 tỷ, 65.6m2, 1 phòng ngủ, hồ bơi, sân thể thao"
+    "description": null
   },
   {
     "listing_id": 45107518,
@@ -99597,7 +99597,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận Bình Thạnh, 1.81 tỷ, 50.4m2, 2 phòng ngủ, phòng gym, công viên"
+    "description": null
   },
   {
     "listing_id": 43667101,
@@ -101157,7 +101157,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận Gò Vấp, 2.78 tỷ, 84.7m2, 4 phòng ngủ, vườn, gần đường xe buýt"
+    "description": null
   },
   {
     "listing_id": 44326394,
@@ -104837,7 +104837,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận Thủ Đức, 2.79 tỷ, 79.7m2, 1 phòng ngủ, thang máy, gần trường học"
+    "description": null
   },
   {
     "listing_id": 44970216,
@@ -106117,7 +106117,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Nhà phố Quận Thủ Đức, 2.23 tỷ, 37.4m2, 1 phòng ngủ, phòng gym, sân thể thao"
+    "description": null
   },
   {
     "listing_id": 44237400,
@@ -106357,7 +106357,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 1, 2.07 tỷ, 52.3m2, 4 phòng ngủ, vườn, bãi đậu xe"
+    "description": null
   },
   {
     "listing_id": 45066515,
@@ -109357,7 +109357,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 3, 4.56 tỷ, 94m2, 4 phòng ngủ, gara, thang máy, công viên"
+    "description": null
   },
   {
     "listing_id": 45186281,
@@ -111357,7 +111357,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 7, 4.54 tỷ, 106.5m2, 3 phòng ngủ, bảo vệ 24h, gần metro"
+    "description": null
   },
   {
     "listing_id": 45080276,
@@ -111517,7 +111517,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Biệt thự Quận Bình Thạnh, 2.28 tỷ, 33.3m2, công viên, bãi đậu xe, gần trường học"
+    "description": null
   },
   {
     "listing_id": 44872978,
@@ -111957,7 +111957,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 3, 28.93 tỷ, 380.6m2, 6 phòng ngủ, phòng gym, sân thể thao"
+    "description": null
   },
   {
     "listing_id": 44364238,
@@ -112517,7 +112517,7 @@
       "city_view": false
     },
     "price_tier_area": "premium",
-    "description": "Nhà phố Quận Thủ Đức, 6.32 tỷ, 103.3m2, 5 phòng ngủ, vườn, thang máy, view công viên"
+    "description": null
   },
   {
     "listing_id": 45181392,
@@ -113237,7 +113237,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 9, 2.44 tỷ, 91.7m2, 3 phòng ngủ, vườn, công viên, gần metro"
+    "description": null
   },
   {
     "listing_id": 45179131,
@@ -113277,7 +113277,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Nhà phố Quận Bình Thạnh, 27.3 tỷ, 340.9m2, 6 phòng ngủ, vườn, hồ bơi, phòng gym"
+    "description": null
   },
   {
     "listing_id": 45178730,
@@ -114157,7 +114157,7 @@
       "city_view": false
     },
     "price_tier_area": "mid",
-    "description": "Căn hộ Quận 3, 2.67 tỷ, 46.4m2, 4 phòng ngủ, ban công, gara, phòng gym"
+    "description": null
   },
   {
     "listing_id": 45054515,
@@ -116037,7 +116037,7 @@
       "city_view": true
     },
     "price_tier_area": "cheap",
-    "description": "Biệt thự Quận 9, 1.73 tỷ, 77m2, 1 phòng ngủ, gara, thang máy, view sông"
+    "description": null
   },
   {
     "listing_id": 40032422,
@@ -116277,7 +116277,7 @@
       "city_view": false
     },
     "price_tier_area": "cheap",
-    "description": "Căn hộ Quận 1, 1.45 tỷ, 73.8m2, 1 phòng ngủ, vườn, gần bệnh viện"
+    "description": null
   },
   {
     "listing_id": 44817009,
@@ -121317,7 +121317,7 @@
       "city_view": true
     },
     "price_tier_area": "premium",
-    "description": "Căn hộ Quận 7, 18.69 tỷ, 252.7m2, 6 phòng ngủ, ban công, vườn, hồ bơi"
+    "description": null
   },
   {
     "listing_id": 44843831,

@@ -94,7 +94,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             primary_intent TEXT,
             age_group      TEXT,
             marital_status TEXT,
-            has_children   INTEGER,
+            children       INTEGER,
             income_level   TEXT,
             budget_min     REAL,
             budget_max     REAL,
@@ -209,7 +209,7 @@ def load_users(conn: sqlite3.Connection) -> int:
         p = u.explicit_preferences
         rows.append((u.user_id, u.segment, u.primary_intent,
                      u.demographics.age_group, u.demographics.marital_status,
-                     int(u.demographics.has_children), u.demographics.income_level,
+                     u.demographics.children, u.demographics.income_level,
                      p.budget_range[0], p.budget_range[1], p.min_bedrooms, u.persona))
         pref_d += [(u.user_id, d) for d in p.preferred_districts]
         liked_a += [(u.user_id, a) for a in p.liked_amenities]

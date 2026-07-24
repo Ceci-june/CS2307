@@ -41,9 +41,17 @@ def _weighted(rng: np.random.Generator, mapping: Dict[str, float]) -> str:
     return str(rng.choice(keys, p=w / w.sum()))
 
 
-def _liked_amenities(rng, *, has_children: bool, intent: str) -> List[str]:
+def _sample_children(rng, marital: str) -> int:
+    dist = C.CHILDREN_DIST.get(marital, C.CHILDREN_DIST["single"])
+    counts = list(dist.keys())
+    probs = np.array([dist[c] for c in counts], dtype=float)
+    probs = probs / probs.sum()
+    return int(rng.choice(counts, p=probs))
+
+
+def _liked_amenities(rng, *, children: int, intent: str) -> List[str]:
     pool: List[str] = []
-    if has_children:
+    if children > 0:
         pool += _FAMILY_AMENITIES
     if intent == "investment":
         pool += _INVEST_AMENITIES
@@ -80,15 +88,20 @@ def generate_users(seed: int = C.RANDOM_SEED, n: int = C.NUM_USERS) -> List[User
         age = _weighted(rng, C.AGE_GROUP_WEIGHTS)
         marital = _weighted(rng, C.MARITAL_WEIGHTS)
         income = _weighted(rng, C.INCOME_WEIGHTS)
-        p_child = C.P_CHILDREN_IF_MARRIED if marital == "married" else C.P_CHILDREN_IF_SINGLE
-        has_children = bool(rng.random() < p_child)
+        children = _sample_children(rng, marital)
 
         n_dist = int(rng.integers(1, 4))
         d_idx = rng.choice(len(C.DISTRICTS), size=n_dist, replace=False,
                            p=np.array(C.DISTRICT_WEIGHTS) / np.sum(C.DISTRICT_WEIGHTS))
         pref_districts = [C.DISTRICTS[j] for j in d_idx]
 
-        min_beds = 2 if has_children else int(rng.integers(1, 3))
+        # càng nhiều con càng cần nhiều phòng ngủ (>=2 nếu có con, +1 nếu >=3 con)
+        if children >= 3:
+            min_beds = 3
+        elif children >= 1:
+            min_beds = 2
+        else:
+            min_beds = int(rng.integers(1, 3))
 
         n_ptype = int(rng.integers(1, 3))
         pt_idx = rng.choice(len(C.PROPERTY_TYPES), size=n_ptype, replace=False,
@@ -100,7 +113,7 @@ def generate_users(seed: int = C.RANDOM_SEED, n: int = C.NUM_USERS) -> List[User
             min_bedrooms=min_beds,
             budget_range=(b_lo, b_hi),
             property_type=ptypes,
-            liked_amenities=_liked_amenities(rng, has_children=has_children, intent=intent),
+            liked_amenities=_liked_amenities(rng, children=children, intent=intent),
         )
         users.append(
             UserProfile(
@@ -109,7 +122,7 @@ def generate_users(seed: int = C.RANDOM_SEED, n: int = C.NUM_USERS) -> List[User
                 primary_intent=intent,
                 demographics=Demographics(
                     age_group=age, marital_status=marital,
-                    has_children=has_children, income_level=income,
+                    children=children, income_level=income,
                 ),
                 explicit_preferences=prefs,
             )

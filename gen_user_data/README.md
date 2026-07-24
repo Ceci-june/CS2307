@@ -67,6 +67,7 @@ python run_eval.py             # 2) NDCG/MRR/HitRate/Recall/Precision/MAP @10
 python export_csv.py           # 3) xuất data/csv/*.csv (Excel/BI)
 python visualize_graph.py      # 4) -> graph_viz.html (mở bằng trình duyệt)
 python tests/test_metrics.py   #    kiểm chứng metric (6/6 PASS)
+python tests/test_load_all.py  #    kiểm chứng loader (6/6 PASS)
 ```
 
 ### 2.4. Bật LLM sinh văn bản (tuỳ chọn — Groq)
@@ -94,6 +95,33 @@ Cần cài `openai` (đã có trong `requirements.txt`). Đổi provider chỉ b
 `LLM_PROVIDER`/`LLM_MODEL`/key — client **provider-agnostic** (OpenAI-compatible).
 Mọi lời gọi LLM đều **batch** (tiết kiệm token) và **fallback template** nếu lỗi →
 không bao giờ làm hỏng pipeline. Bật hay tắt, dữ liệu vẫn hợp lệ cùng một schema.
+
+### 2.5. Công thức thường dùng (recipes)
+
+| Tôi muốn… | Làm gì |
+|---|---|
+| Sinh lại **N user** (vd 300) | Sửa `NUM_USERS=300` trong `config/distribution_config.py` → `python generate_all.py` |
+| Đổi **số interaction/user** | Sửa `INTERACTIONS_PER_USER_LAMBDA` + `MIN/MAX_INTERACTIONS_PER_USER` |
+| Đổi **tỷ lệ phân khúc/intent** | Sửa `BUDGET_SEGMENTS` / `INTENT_WEIGHTS` |
+| **Bật LLM** sinh chữ | `.env`: `USE_LLM=1` + `GROQ_API_KEY=...` → `python generate_all.py` |
+| **Nạp vào DB** để query SQL | `python load_all.py` → mở `data/warehouse.sqlite` |
+| **Tính sẵn** cho query nhanh | `python precompute.py` → dùng `content_neighbors` / `popularity` / `query_expansion` |
+| **Chấm điểm** recommender | `python run_eval.py` → `data/eval_results.json` |
+| Xuất **CSV** cho Excel/BI | `python export_csv.py` → `data/csv/*.csv` |
+| Xem **đồ thị** trực quan | `python visualize_graph.py` → mở `graph_viz.html` |
+| Chạy **toàn bộ** một mạch | `generate_all.py` → `load_all.py` → `precompute.py` → `run_eval.py` |
+
+**Truy vấn ví dụ trên warehouse** (sau `load_all.py`):
+```python
+import sqlite3
+c = sqlite3.connect("data/warehouse.sqlite")
+# top 20 BĐS tương tự listing 45222670 (đã precompute)
+c.execute("SELECT neighbor_id, sim FROM pc_item_neighbor "
+          "WHERE listing_id=45222670 ORDER BY rank LIMIT 5").fetchall()
+# nới rộng truy vấn: near_school -> attribute liên quan
+c.execute("SELECT related, weight FROM pc_query_expansion "
+          "WHERE attr='near_school' ORDER BY weight DESC").fetchall()
+```
 
 ---
 
@@ -134,7 +162,8 @@ gen_user_data/
 ├── export_csv.py                   # JSON -> data/csv/*.csv
 ├── visualize_graph.py              # -> graph_viz.html (SVG tự-chứa, theme-aware)
 ├── tests/
-│   └── test_metrics.py             # unit test công thức metric
+│   ├── test_metrics.py             # unit test công thức metric
+│   └── test_load_all.py            # test loader: derived, validate, dedup, idempotent, full-refresh
 │
 └── data/                           # (SINH RA bằng script; tái tạo: python generate_all.py)
     ├── listings.json  users.json  interactions.json  eval_results.json
@@ -147,6 +176,28 @@ gen_user_data/
                        similarity_edges.json           # declared (amenity + criteria)
                        location_similarity_edges.json  # từ hành vi (quận↔quận)
 ```
+
+### 3.1. Bản đồ Input → Output theo script
+
+Mỗi script là một **hàm thuần**: đọc file/nguồn cố định → ghi file cố định. Không có
+trạng thái ẩn; chạy lại cho kết quả như nhau (seed).
+
+| Script | INPUT | OUTPUT | Hàm chính |
+|---|---|---|---|
+| `catalog.py` | `embeddings.pkl` (id thật) + config | `data/listings.json` | `build_catalog`, `assign_area_price_tier` |
+| `generation/generate_users.py` | config | `data/users.json` | `generate_users` |
+| `generation/generate_interactions.py` | users + listings (+ LLM nếu bật) | `data/interactions.json` | `generate_interactions`, `relevance` |
+| `generation/llm_client.py` | `.env` (`USE_LLM`, key) | *(dịch vụ sinh chữ)* | `LLMClient`, `QueryGenerator` |
+| `generation/enrich.py` | users/listings + LLM | `persona`/`description` (điền vào JSON) | `enrich_personas`, `enrich_descriptions` |
+| `generate_all.py` | *(gọi các bước trên)* | listings/users/interactions + KG | `main` |
+| `similarity_kg.py` | `knowledge.py` + `similarity_matrix_v2.py` + interactions | `similarity_edges.json`, `location_similarity_edges.json`, `similarity_validation.json` | `main` |
+| `kg/build_kg.py` | users/listings/interactions + similarity edges | `kg/nodes.csv`, `edges.csv`, `import.cypher` | `build` |
+| `load_all.py` | các file `*.json` + similarity edges | `warehouse.sqlite` + `graph/kg_networkx.pkl` | `run` |
+| `precompute.py` | listings/interactions + `embeddings.pkl` + similarity edges | `precomputed/*.json` + bảng `pc_*` | `main` |
+| `run_eval.py` | users/listings/interactions (+ embeddings) | `data/eval_results.json` (stdout report) | `main` |
+| `export_csv.py` | `*.json` + `precomputed/*.json` | `data/csv/*.csv` | `main` |
+| `visualize_graph.py` | users/listings/interactions + eval | `graph_viz.html` | `main` |
+| `tests/*.py` | fixture nội bộ | PASS/FAIL | — |
 
 ---
 
@@ -163,7 +214,7 @@ amenity/accessibility/view **khớp chính xác**
   "segment": "affordable",              // affordable | mid_range | luxury
   "primary_intent": "buy_for_living",   // buy_for_living | investment | rent
   "demographics": { "age_group": "30-40", "marital_status": "married",
-                    "has_children": true, "income_level": "medium_high" },
+                    "children": 2, "income_level": "medium_high" },  // số con 0-10 (VN thường 0-3)
   "explicit_preferences": {
     "preferred_districts": ["Quận 9", "Phường Long Bình"],
     "min_bedrooms": 2, "budget_range": [2.0, 2.4],   // tỷ VNĐ
@@ -200,6 +251,56 @@ các thuộc tính (giá, diện tích, quận, `features`) được **mô phỏ
   tính bằng tercile (p33/p66) của phân bổ giá **chính quận đó** (`catalog.district_price_quantiles`).
   → dùng để chọn từ ngữ query: "nhà rẻ" ở Quận 1 (p33≈2.1 tỷ) khác "nhà rẻ" ở Quận 9.
   Câu query lấy từ `price_tier_area` chứ không nhắc con số tỷ tuyệt đối.
+
+- `description` (chỉ khi bật LLM, ngược lại `null`) — mô tả tin đăng do LLM sinh, bám đúng dữ liệu.
+
+### 4.4. Knowledge Graph CSV (`data/kg/`)
+
+Xuất từ `build_kg.py`. Hai file dạng **danh sách cạnh/đỉnh** (nạp được vào Neo4j/DGL/NetworkX):
+
+**`nodes.csv`** — mỗi dòng 1 node:
+
+| Cột | Ý nghĩa |
+|---|---|
+| `id` | khoá duy nhất, dạng `Label:name` (vd `Listing:45222670`, `Amenity:pool`) |
+| `label` | loại node: `User/Listing/Location/Amenity/Intent/Query/Criterion` |
+| `name` | tên hiển thị |
+| *(cột khác)* | thuộc tính tuỳ loại (vd Listing có `price`, `bedrooms`…) — trống nếu không áp dụng |
+
+**`edges.csv`** — mỗi dòng 1 cạnh:
+
+| Cột | Ý nghĩa |
+|---|---|
+| `src`, `dst` | node nguồn/đích (khớp `nodes.id`) |
+| `rel` | loại quan hệ: `VIEWED/SAVED/SHARED/CONTACTED`, `SEARCHED`, `LOCATED_IN`, `HAS_AMENITY`, `PREFERS_DISTRICT`, `LIKES_AMENITY`, `HAS_INTENT`, `SIMILAR_TO`, `SIMILAR_LOCATION` |
+| `score`,`dwell_time`,`timestamp`,`source` | thuộc tính cạnh tương tác (rỗng với cạnh khác) |
+| `weight` | trọng số cạnh `SIMILAR_TO`/`SIMILAR_LOCATION` |
+
+`import.cypher` = cùng nội dung nhưng dạng lệnh `MERGE` chạy thẳng trên Neo4j.
+
+### 4.5. Kho quan hệ SQLite (`data/warehouse.sqlite`, từ `load_all.py`)
+
+| Bảng | Khoá chính | Nội dung |
+|---|---|---|
+| `properties` | `listing_id` | thuộc tính + derived (`price_per_sqm_mil`, `amenity_count`, `family_suitable`) |
+| `property_amenity` | (`listing_id`,`amenity`) | listing ↔ tiện ích (long format) |
+| `users` | `user_id` | profile + `budget_min/max`, `persona` |
+| `user_pref_district` / `user_liked_amenity` | (user, giá trị) | preference dạng long |
+| `behavior` | `interaction_id` | event + cờ `is_positive` (save/share/contact) |
+| `attribute_similarity` | (`attr_a`,`attr_b`,`grp`) | cạnh similarity (chuẩn hoá a≤b) |
+| `pc_popularity` / `pc_item_neighbor` / `pc_query_expansion` | | bảng tra cứu do `precompute.py` ghi |
+
+### 4.6. Artifact tính sẵn (`data/precomputed/`, từ `precompute.py`)
+
+```jsonc
+// content_neighbors.json — {listing_id: [top-20 tương tự]}
+"45222670": [ {"listing_id": 43716231, "sim": 0.9787}, ... ]
+// popularity.json
+{ "per_listing": {"45222670": 0.83, ...},
+  "top_by_district": {"Quận 9": [id, id, ...]}, "global_top": [...] }
+// query_expansion.json — {attribute: [attribute liên quan]}
+"near_school": [ {"attr": "kids_playground", "weight": 0.3, "group": "amenity"}, ... ]
+```
 
 ---
 
@@ -331,8 +432,11 @@ Idempotent (ghi đè file + `INSERT OR REPLACE`). Dùng embeddings đã **dedup*
 
 ## 8. CSV & Visualize
 
-- [`export_csv.py`](export_csv.py) → `data/csv/{users,listings,interactions,eval_results}.csv`
-  (phẳng, UTF-8-BOM để Excel đọc đúng tiếng Việt; `listings` tách 25 cột feature boolean).
+- [`export_csv.py`](export_csv.py) → `data/csv/*.csv` (phẳng, UTF-8-BOM để Excel đọc
+  đúng tiếng Việt; `listings` tách 25 cột feature boolean). Xuất: `users`, `listings`,
+  `interactions`, `eval_results`, `similarity_edges`, và các artifact precompute
+  (`content_neighbors`, `co_engagement`, `popularity`, `query_expansion`,
+  `segment_affinity`) — cái nào chưa có nguồn thì tự bỏ qua.
 - [`visualize_graph.py`](visualize_graph.py) → `graph_viz.html` (tự-chứa, theme-aware):
   sơ đồ **schema**, **subgraph mẫu** (layout `networkx`), biểu đồ **thống kê node/edge**
   và biểu đồ **kết quả eval**. Màu theo palette đã qua validator, kèm secondary

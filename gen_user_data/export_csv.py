@@ -44,7 +44,7 @@ def export_users() -> pd.DataFrame:
             "user_id": u["user_id"], "segment": u["segment"],
             "primary_intent": u["primary_intent"],
             "age_group": d["age_group"], "marital_status": d["marital_status"],
-            "has_children": d["has_children"], "income_level": d["income_level"],
+            "children": d["children"], "income_level": d["income_level"],
             "preferred_districts": _join(p["preferred_districts"]),
             "min_bedrooms": p["min_bedrooms"],
             "budget_min": p["budget_range"][0], "budget_max": p["budget_range"][1],
