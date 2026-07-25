@@ -14,10 +14,10 @@ thư viện metric** của repo
 ## 1. Pipeline
 
 ```
-embeddings.pkl (3037 listing_id THẬT)
+Data/Final_Data.csv (listing THẬT) + embeddings.pkl (id + vector)
         │
         ▼
-   catalog.py ───────────────► data/listings.json      (mô phỏng thuộc tính)
+   catalog.py ───────────────► data/listings.json      (thuộc tính + địa chỉ THẬT)
                                       │
  generate_users.py ─────────► data/users.json          (ép phân phối 60/30/10)
                                       │
@@ -137,7 +137,7 @@ gen_user_data/
 ├── config/
 │   └── distribution_config.py      # MỌI tỷ lệ phân phối, seed, trọng số
 ├── schemas.py                      # Pydantic: Listing / UserProfile / Interaction
-├── catalog.py                      # listing_id THẬT (embeddings.pkl) + thuộc tính mô phỏng
+├── catalog.py                      # nạp listing THẬT từ Data/Final_Data.csv (địa chỉ sau sáp nhập)
 │
 ├── generation/
 │   ├── generate_users.py           # -> data/users.json
@@ -184,7 +184,7 @@ trạng thái ẩn; chạy lại cho kết quả như nhau (seed).
 
 | Script | INPUT | OUTPUT | Hàm chính |
 |---|---|---|---|
-| `catalog.py` | `embeddings.pkl` (id thật) + config | `data/listings.json` | `build_catalog`, `assign_area_price_tier` |
+| `catalog.py` | `Data/Final_Data.csv` (thật) + `embeddings.pkl` (lọc id) | `data/listings.json` | `build_catalog`, `derive_pools`, `assign_area_price_tier` |
 | `generation/generate_users.py` | config | `data/users.json` | `generate_users` |
 | `generation/generate_interactions.py` | users + listings (+ LLM nếu bật) | `data/interactions.json` | `generate_interactions`, `relevance` |
 | `generation/llm_client.py` | `.env` (`USE_LLM`, key) | *(dịch vụ sinh chữ)* | `LLMClient`, `QueryGenerator` |
@@ -243,10 +243,13 @@ amenity/accessibility/view **khớp chính xác**
 ```
 
 ### 4.3. `listings.json`
-`listing_id` là **ID thật** lấy từ `backend/src/data/embeddings.pkl` (3037 căn);
-các thuộc tính (giá, diện tích, quận, `features`) được **mô phỏng nhất quán**.
+**Toàn bộ thuộc tính là DỮ LIỆU THẬT** lấy từ [`Data/Final_Data.csv`](../Data/Final_Data.csv)
+(join theo `listing_id`, lọc các id có trong `embeddings.pkl` → 3030 căn):
+giá, diện tích, phòng ngủ/tắm, loại BĐS, **địa chỉ + phường/xã SAU sáp nhập** (2025),
+và các cột tiện ích 0/1. Chỉ **users & interactions** là mô phỏng (không có data user thật).
 
-- `budget_group` — phân khúc **tuyệt đối** toàn thị trường (affordable/mid_range/luxury).
+- `district` — **phường/xã thật sau sáp nhập** (vd `Phường Long Bình`, `Phường An Khánh`, `Xã Nhà Bè`); `address` = địa chỉ đầy đủ.
+- `budget_group` — phân khúc **tuyệt đối** theo giá thật (affordable ≤3 / mid 3-8 / luxury >8 tỷ).
 - `price_tier_area` — mức giá **tương đối trong quận** (`cheap`/`mid`/`premium`),
   tính bằng tercile (p33/p66) của phân bổ giá **chính quận đó** (`catalog.district_price_quantiles`).
   → dùng để chọn từ ngữ query: "nhà rẻ" ở Quận 1 (p33≈2.1 tỷ) khác "nhà rẻ" ở Quận 9.
@@ -446,7 +449,8 @@ Idempotent (ghi đè file + `INSERT OR REPLACE`). Dùng embeddings đã **dedup*
 
 ## 9. Thiết kế đáng lưu ý
 
-- **Grounded trên dữ liệu thật:** `listing_id` thật; field amenity khớp backend.
+- **Grounded trên dữ liệu thật:** listing lấy 100% từ `Data/Final_Data.csv` (giá,
+  diện tích, tiện ích, **địa chỉ phường/xã sau sáp nhập**); chỉ user/interaction là mô phỏng.
 - **Kiểm soát phân phối bằng RNG có seed** thay vì phó mặc LLM (LLM hay trôi về
   trung bình). LLM chỉ dùng cho `raw_query`, có **template offline fallback** →
   chạy được **không cần mạng/API key** (bật LLM thật: `USE_LLM=1`).

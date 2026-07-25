@@ -173,71 +173,161 @@ dang_cho_so,hop_dong_mua_ban,0.6,criteria
 dang_cho_so,so_chung,0.4,criteria
 dang_cho_so,gia_thap,0.35,criteria
 noi_that_co_ban,gia_thap,0.45,criteria
-Phường An Phú,Quận Tân Bình,0.355,location
-Phường An Phú,Phường Long Bình,0.344,location
-Phường An Phú,Quận Thủ Đức,0.331,location
-Quận Tân Bình,Quận Gò Vấp,0.411,location
-Quận Tân Bình,Quận 9,0.406,location
-Quận Tân Bình,Quận Thủ Đức,0.403,location
-Quận Tân Bình,Phường An Phú,0.355,location
-Phường Long Bình,Quận 7,0.421,location
-Phường Long Bình,Quận 1,0.406,location
-Phường Long Bình,Phường Dĩ An,0.391,location
-Phường Long Bình,Phường An Phú,0.344,location
-Phường Long Bình,Phường Hiệp Bình,0.283,location
-Quận Thủ Đức,Quận 2,0.488,location
-Quận Thủ Đức,Quận 9,0.484,location
-Quận Thủ Đức,Quận 7,0.483,location
-Quận Thủ Đức,Phường Dĩ An,0.441,location
-Quận Thủ Đức,Quận 4,0.433,location
-Quận Thủ Đức,Quận Gò Vấp,0.433,location
-Quận Thủ Đức,Quận Bình Thạnh,0.42,location
-Quận Thủ Đức,Quận Tân Bình,0.403,location
-Quận Thủ Đức,Quận 3,0.383,location
-Quận Thủ Đức,Phường An Phú,0.331,location
-Phường Dĩ An,Quận Thủ Đức,0.441,location
-Phường Dĩ An,Quận 2,0.428,location
-Phường Dĩ An,Quận 7,0.415,location
-Phường Dĩ An,Phường Long Bình,0.391,location
-Quận 2,Quận 7,0.516,location
-Quận 2,Quận 1,0.494,location
-Quận 2,Quận Thủ Đức,0.488,location
-Quận 2,Phường Dĩ An,0.428,location
-Quận 2,Quận 4,0.424,location
-Quận 7,Quận 1,0.531,location
-Quận 7,Quận 2,0.516,location
-Quận 7,Quận 9,0.513,location
-Quận 7,Quận Thủ Đức,0.483,location
-Quận 7,Quận 3,0.465,location
-Quận 7,Phường Long Bình,0.421,location
-Quận 7,Phường Dĩ An,0.415,location
-Phường Hiệp Bình,Quận 4,0.296,location
-Phường Hiệp Bình,Phường Long Bình,0.283,location
-Phường Hiệp Bình,Quận 1,0.273,location
-Quận 4,Quận Thủ Đức,0.433,location
-Quận 4,Quận 2,0.424,location
-Quận 4,Quận 9,0.41,location
-Quận 4,Phường Hiệp Bình,0.296,location
-Quận 1,Quận 7,0.531,location
-Quận 1,Quận 2,0.494,location
-Quận 1,Quận 9,0.483,location
-Quận 1,Quận Bình Thạnh,0.445,location
-Quận 1,Phường Long Bình,0.406,location
-Quận 1,Quận Gò Vấp,0.403,location
-Quận 1,Phường Hiệp Bình,0.273,location
-Quận 9,Quận Bình Thạnh,0.518,location
-Quận 9,Quận 7,0.513,location
-Quận 9,Quận Thủ Đức,0.484,location
-Quận 9,Quận 1,0.483,location
-Quận 9,Quận 3,0.427,location
-Quận 9,Quận 4,0.41,location
-Quận 9,Quận Tân Bình,0.406,location
-Quận 3,Quận 7,0.465,location
-Quận 3,Quận 9,0.427,location
-Quận 3,Quận Thủ Đức,0.383,location
-Quận Bình Thạnh,Quận 9,0.518,location
-Quận Bình Thạnh,Quận 1,0.445,location
-Quận Bình Thạnh,Quận Thủ Đức,0.42,location
-Quận Gò Vấp,Quận Thủ Đức,0.433,location
-Quận Gò Vấp,Quận Tân Bình,0.411,location
-Quận Gò Vấp,Quận 1,0.403,location
+Phường An Hội Tây,Phường Bình Trưng,0.306,location
+Phường An Hội Tây,Phường An Lạc,0.289,location
+Phường An Hội Tây,Phường Bình Thạnh,0.279,location
+Phường Bình Trưng,Phường An Hội Tây,0.306,location
+Phường An Lạc,Phường An Hội Tây,0.289,location
+Phường An Lạc,Phường Long Bình,0.281,location
+Phường Bình Thạnh,Phường An Hội Tây,0.279,location
+Phường An Khánh,Phường Tây Thạnh,0.298,location
+Phường Tây Thạnh,Phường Chánh Hiệp,0.332,location
+Phường Tây Thạnh,Phường An Khánh,0.298,location
+Phường Long Bình,Xã Nhà Bè,0.389,location
+Phường Long Bình,Xã Tân Nhựt,0.304,location
+Phường Long Bình,Phường An Phú Đông,0.288,location
+Phường Long Bình,Phường Bình Lợi Trung,0.283,location
+Phường Long Bình,Phường Phú Thọ Hòa,0.283,location
+Phường Long Bình,Phường Vườn Lài,0.282,location
+Phường Long Bình,Phường An Lạc,0.281,location
+Phường Long Bình,Phường Thạnh Mỹ Tây,0.271,location
+Phường Long Bình,Phường Tân Hưng,0.268,location
+Phường An Nhơn,Xã Hưng Long,0.426,location
+Xã Hưng Long,Phường An Nhơn,0.426,location
+Xã Hưng Long,Xã Tân An Hội,0.392,location
+Xã Hưng Long,Phường Chánh Hưng,0.276,location
+Xã Hưng Long,Phường Thới An,0.253,location
+Phường An Phú Đông,Xã Nhà Bè,0.312,location
+Phường An Phú Đông,Phường Long Bình,0.288,location
+Phường An Phú Đông,Phường Phú Định,0.286,location
+Phường An Phú Đông,Phường Thông Tây Hội,0.264,location
+Phường An Phú Đông,Phường Tăng Nhơn Phú,0.253,location
+Xã Nhà Bè,Phường Long Bình,0.389,location
+Xã Nhà Bè,Phường Bình Lợi Trung,0.318,location
+Xã Nhà Bè,Phường An Phú Đông,0.312,location
+Xã Nhà Bè,Phường Long Phước,0.3,location
+Xã Nhà Bè,Phường Hiệp Bình,0.292,location
+Xã Nhà Bè,Phường Phú Thuận,0.279,location
+Xã Nhà Bè,Phường Vũng Tàu,0.279,location
+Xã Nhà Bè,Phường Thạnh Mỹ Tây,0.277,location
+Xã Nhà Bè,Phường Thủ Đức,0.261,location
+Xã Nhà Bè,Phường Phú Định,0.253,location
+Phường Phú Định,Phường An Phú Đông,0.286,location
+Phường Phú Định,Xã Nhà Bè,0.253,location
+Phường Bình Dương,Phường Bình Quới,0.304,location
+Phường Bình Quới,Phường Bình Dương,0.304,location
+Phường Bình Quới,Phường Tân Thới Hiệp,0.286,location
+Phường Bình Quới,Phường Tam Thắng,0.251,location
+Phường Bình Hòa,Phường Bình Lợi Trung,0.255,location
+Phường Bình Lợi Trung,Xã Nhà Bè,0.318,location
+Phường Bình Lợi Trung,Phường Tân Thuận,0.315,location
+Phường Bình Lợi Trung,Phường Long Bình,0.283,location
+Phường Bình Lợi Trung,Phường Bình Hòa,0.255,location
+Phường Bình Lợi Trung,Phường Hiệp Bình,0.252,location
+Phường Tân Thuận,Phường Bình Lợi Trung,0.315,location
+Phường Tân Thuận,Phường Tân Hưng,0.28,location
+Phường Tân Thuận,Phường Hòa Hưng,0.257,location
+Phường Tân Thới Hiệp,Phường Bình Quới,0.286,location
+Phường Tam Thắng,Phường Bình Quới,0.251,location
+Phường Bình Thới,Xã Trừ Văn Thố,0.287,location
+Xã Trừ Văn Thố,Phường Bình Thới,0.287,location
+Phường Bình Tiên,Phường Đức Nhuận,0.417,location
+Phường Bình Tiên,Xã Bình Lợi,0.376,location
+Phường Bình Tiên,Phường Phú Thuận,0.275,location
+Phường Đức Nhuận,Phường Bình Tiên,0.417,location
+Phường Đức Nhuận,Phường Phú Thuận,0.253,location
+Xã Bình Lợi,Phường Bình Tiên,0.376,location
+Xã Bình Lợi,Phường Tân Phú,0.296,location
+Phường Phú Thuận,Phường Bình Tây,0.301,location
+Phường Phú Thuận,Xã Nhà Bè,0.279,location
+Phường Phú Thuận,Phường Bình Tiên,0.275,location
+Phường Phú Thuận,Phường Đức Nhuận,0.253,location
+Phường Bình Trị Đông,Phường Tân Bình,0.314,location
+Phường Bình Trị Đông,Phường Bình Đông,0.261,location
+Phường Bình Trị Đông,Xã Đất Đỏ,0.252,location
+Phường Tân Bình,Phường Bình Trị Đông,0.314,location
+Phường Bình Đông,Phường Bình Trị Đông,0.261,location
+Xã Đất Đỏ,Xã Xuân Thới Sơn,0.337,location
+Xã Đất Đỏ,Phường Bình Trị Đông,0.252,location
+Phường Bình Tây,Phường Phú Thuận,0.301,location
+Phường Bến Thành,Phường Phú Lợi,0.374,location
+Phường Phú Lợi,Phường Bến Thành,0.374,location
+Phường Chánh Hiệp,Phường Chợ Quán,0.391,location
+Phường Chánh Hiệp,Phường Tây Thạnh,0.332,location
+Phường Chánh Hiệp,Phường Thủ Dầu Một,0.301,location
+Phường Chợ Quán,Phường Chánh Hiệp,0.391,location
+Phường Chợ Quán,Phường Tân Mỹ,0.366,location
+Phường Thủ Dầu Một,Xã Tân An Hội,0.412,location
+Phường Thủ Dầu Một,Phường Chánh Hiệp,0.301,location
+Phường Thủ Dầu Một,Phường Phước Long,0.266,location
+Phường Chánh Hưng,Xã Hưng Long,0.276,location
+Phường Chánh Hưng,Phường Long Trường,0.275,location
+Phường Long Trường,Phường Chánh Hưng,0.275,location
+Phường Chánh Phú Hòa,Phường Hạnh Thông,0.251,location
+Phường Hạnh Thông,Phường Rạch Dừa,0.299,location
+Phường Hạnh Thông,Phường Chánh Phú Hòa,0.251,location
+Phường Chợ Lớn,Phường Tân Đông Hiệp,0.262,location
+Phường Tân Đông Hiệp,Phường Tân Sơn Nhất,0.268,location
+Phường Tân Đông Hiệp,Phường Chợ Lớn,0.262,location
+Phường Tân Mỹ,Phường Chợ Quán,0.366,location
+Phường Tân Mỹ,Phường Xóm Chiếu,0.333,location
+Phường Cầu Ông Lãnh,Phường Tân Sơn,0.253,location
+Phường Tân Sơn,Xã Tân Nhựt,0.301,location
+Phường Tân Sơn,Phường Cầu Ông Lãnh,0.253,location
+Phường Gia Định,Phường Hiệp Bình,0.259,location
+Phường Hiệp Bình,Xã Nhà Bè,0.292,location
+Phường Hiệp Bình,Phường Gia Định,0.259,location
+Phường Hiệp Bình,Phường Bình Lợi Trung,0.252,location
+Phường Hiệp Bình,Phường Tân Sơn Nhất,0.25,location
+Phường Hòa Hưng,Phường Tân Hưng,0.286,location
+Phường Hòa Hưng,Phường Tân Thuận,0.257,location
+Phường Hòa Hưng,Phường Phú Nhuận,0.257,location
+Phường Tân Hưng,Phường Hòa Hưng,0.286,location
+Phường Tân Hưng,Phường Tân Thuận,0.28,location
+Phường Tân Hưng,Phường Long Bình,0.268,location
+Phường Phú Nhuận,Phường Hòa Hưng,0.257,location
+Phường Rạch Dừa,Phường Hạnh Thông,0.299,location
+Phường Khánh Hội,Xã Tân Vĩnh Lộc,0.288,location
+Xã Tân Vĩnh Lộc,Xã Bình Chánh,0.315,location
+Xã Tân Vĩnh Lộc,Phường Khánh Hội,0.288,location
+Phường Linh Xuân,Phường Thông Tây Hội,0.307,location
+Phường Thông Tây Hội,Phường Linh Xuân,0.307,location
+Phường Thông Tây Hội,Phường An Phú Đông,0.264,location
+Xã Tân Nhựt,Phường Long Bình,0.304,location
+Xã Tân Nhựt,Phường Tân Sơn,0.301,location
+Phường Long Hương,Phường Tân Sơn Hòa,0.35,location
+Phường Tân Sơn Hòa,Phường Long Hương,0.35,location
+Phường Long Phước,Xã Nhà Bè,0.3,location
+Phường Phú Lâm,Xã Hóc Môn,0.518,location
+Xã Hóc Môn,Phường Phú Lâm,0.518,location
+Xã Hóc Môn,Phường Xuân Hòa,0.285,location
+Phường Phú Thọ Hòa,Phường Long Bình,0.283,location
+Phường Phước Long,Phường Thủ Dầu Một,0.266,location
+Phường Sài Gòn,Xã Bàu Bàng,0.276,location
+Xã Bàu Bàng,Phường Sài Gòn,0.276,location
+Xã Bàu Bàng,Phường Tân Tạo,0.26,location
+Phường Thạnh Mỹ Tây,Xã Nhà Bè,0.277,location
+Phường Thạnh Mỹ Tây,Phường Long Bình,0.271,location
+Phường Thới An,Xã Hưng Long,0.253,location
+Phường Thới Hòa,Phường Đông Hòa,0.414,location
+Phường Thới Hòa,Xã Tân An Hội,0.33,location
+Phường Thới Hòa,Xã Xuân Thới Sơn,0.285,location
+Phường Đông Hòa,Phường Thới Hòa,0.414,location
+Xã Tân An Hội,Phường Thủ Dầu Một,0.412,location
+Xã Tân An Hội,Xã Hưng Long,0.392,location
+Xã Tân An Hội,Phường Thới Hòa,0.33,location
+Xã Xuân Thới Sơn,Xã Đất Đỏ,0.337,location
+Xã Xuân Thới Sơn,Phường Thới Hòa,0.285,location
+Phường Thủ Đức,Xã Nhà Bè,0.261,location
+Phường Xóm Chiếu,Xã Bình Hưng,0.343,location
+Phường Xóm Chiếu,Phường Tân Mỹ,0.333,location
+Phường Tân Phú,Xã Bình Lợi,0.296,location
+Phường Tân Sơn Nhất,Phường Tân Đông Hiệp,0.268,location
+Phường Tân Sơn Nhất,Phường Hiệp Bình,0.25,location
+Phường Tân Tạo,Xã Bàu Bàng,0.26,location
+Phường Tăng Nhơn Phú,Phường An Phú Đông,0.253,location
+Phường Vũng Tàu,Xã Nhà Bè,0.279,location
+Phường Vườn Lài,Phường Long Bình,0.282,location
+Phường Xuân Hòa,Xã Hóc Môn,0.285,location
+Xã Bình Hưng,Phường Xóm Chiếu,0.343,location
+Xã Bình Chánh,Xã Tân Vĩnh Lộc,0.315,location

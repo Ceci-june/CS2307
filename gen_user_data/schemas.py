@@ -40,7 +40,9 @@ class Listing(BaseModel):
     listing_id: int
     title: str
     property_type: str
-    district: str
+    district: str                          # phường/xã SAU sáp nhập (từ Final_Data.csv)
+    address: Optional[str] = None          # địa chỉ thật đầy đủ
+    city_province: Optional[str] = None
     price_billion: float = Field(..., ge=0)
     area_sqm: float = Field(..., gt=0)
     bedrooms: int = Field(..., ge=0)

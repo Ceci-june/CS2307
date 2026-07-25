@@ -1,23 +1,19 @@
-"""Xây dựng catalog listing (`listings.json`) từ listing_id THẬT.
+"""Xây dựng catalog listing từ DỮ LIỆU THẬT `Data/Final_Data.csv`.
 
-Recommender thật lưu thuộc tính trong Postgres; ở môi trường cold-start này ta
-chỉ có sẵn `backend/src/data/embeddings.pkl` (3037 listing_id thật + vector 768d).
-Module này lấy các listing_id thật đó rồi mô phỏng thuộc tính (giá, diện tích,
-quận, tiện ích) một cách nhất quán và có seed, để:
+Trước đây thuộc tính listing được mô phỏng bằng RNG (vì chỉ có embeddings.pkl =
+id + vector). Nay dùng file thật `Data/Final_Data.csv` — có đầy đủ:
+giá, diện tích, phòng ngủ/tắm, loại BĐS, **địa chỉ + quận/phường SAU sáp nhập**,
+và các cột tiện ích 0/1. Chỉ giữ các listing_id có trong embeddings.pkl (để
+embed_cf / content_neighbors dùng được).
 
-  * users/interactions tham chiếu tới listing có thật,
-  * KG có node Listing với thuộc tính đầy đủ,
-  * evaluation có ground-truth ổn định giữa các lần chạy.
-
-Nếu sau này có dump thuộc tính thật (CSV/JSON), chỉ cần thay hàm
-`load_listing_ids` / bổ sung `enrich_from_real_dump` là dữ liệu thật thay thế
-phần mô phỏng — phần còn lại của pipeline không đổi.
+Users & interactions vẫn mô phỏng (không có dữ liệu user thật) — nhưng nay tham
+chiếu tới listing THẬT nên relevance/ground-truth sát thực tế hơn.
 """
 from __future__ import annotations
 
 import json
 import os
-from typing import List
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -32,93 +28,96 @@ from schemas import (
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 EMBEDDINGS_PKL = os.path.join(REPO_ROOT, "backend", "src", "data", "embeddings.pkl")
+FINAL_DATA_CSV = os.path.join(REPO_ROOT, "Data", "Final_Data.csv")
 DATA_DIR = os.path.join(HERE, "data")
 LISTINGS_PATH = os.path.join(DATA_DIR, "listings.json")
 
-# Xác suất một feature = True, phụ thuộc phân khúc (luxury nhiều tiện ích hơn).
-_FEATURE_BASE_P = {
-    "affordable": 0.18,
-    "mid_range": 0.35,
-    "luxury": 0.62,
-}
+# Ngưỡng phân khúc tuyệt đối (tỷ VNĐ) — khớp knowledge.py PROFILE_RULES.
+_AFFORDABLE_MAX = C.BUDGET_SEGMENTS["affordable"]["price_range"][1]  # 3.0
+_MID_MAX = C.BUDGET_SEGMENTS["mid_range"]["price_range"][1]          # 8.0
+
+# Các cột boolean tiện ích trong Listing.features
+_FEATURE_FIELDS = AMENITY_FIELDS + ACCESSIBILITY_FIELDS + VIEW_FIELDS
 
 
-def load_listing_ids(limit: int | None = None) -> List[int]:
-    """Đọc listing_id thật từ embeddings.pkl."""
-    import pandas as pd  # local import: chỉ cần khi build catalog
+def _budget_group(price: float) -> str:
+    if price <= _AFFORDABLE_MAX:
+        return "affordable"
+    if price <= _MID_MAX:
+        return "mid_range"
+    return "luxury"
 
+
+def _embeddings_ids() -> set:
+    import pandas as pd
     if not os.path.exists(EMBEDDINGS_PKL):
-        raise FileNotFoundError(
-            f"Không tìm thấy embeddings.pkl tại {EMBEDDINGS_PKL}. "
-            "Đây là nguồn listing_id thật cho catalog."
-        )
+        return set()
     df = pd.read_pickle(EMBEDDINGS_PKL)
-    ids = [int(x) for x in df["listing_id"].tolist()]
-    if limit:
-        ids = ids[:limit]
-    return ids
-
-
-def _pick(rng: np.random.Generator, choices, weights) -> str:
-    return str(rng.choice(choices, p=np.asarray(weights) / np.sum(weights)))
+    return {int(x) for x in df["listing_id"]}
 
 
 def build_catalog(seed: int = C.RANDOM_SEED, limit: int | None = None) -> List[Listing]:
-    ids = load_listing_ids(limit=limit)
-    rng = np.random.default_rng(seed)
+    """Đọc Final_Data.csv -> Listing thật (lọc theo id có embedding)."""
+    import pandas as pd
 
-    seg_names = list(C.BUDGET_SEGMENTS)
-    seg_weights = np.array([C.BUDGET_SEGMENTS[s]["weight"] for s in seg_names])
-    seg_weights = seg_weights / seg_weights.sum()
+    if not os.path.exists(FINAL_DATA_CSV):
+        raise FileNotFoundError(
+            f"Không tìm thấy {FINAL_DATA_CSV}. Đây là nguồn thuộc tính listing THẬT."
+        )
+    df = pd.read_csv(FINAL_DATA_CSV)
+    df = df.drop_duplicates(subset="listing_id")
+
+    emb_ids = _embeddings_ids()
+    if emb_ids:
+        df = df[df["listing_id"].astype(int).isin(emb_ids)]
+
+    # dọn kiểu
+    df["area_num"] = pd.to_numeric(df["area"], errors="coerce")
+    area_default = float(df["area_num"].median())
 
     listings: List[Listing] = []
-    for lid in ids:
-        segment = str(rng.choice(seg_names, p=seg_weights))
-        lo, hi = C.BUDGET_SEGMENTS[segment]["price_range"]
-        price = round(float(rng.uniform(lo, hi)), 2)
+    for _, r in df.iterrows():
+        price = float(r["price_range"])
+        area = float(r["area_num"]) if not pd.isna(r["area_num"]) else area_default
+        beds = int(r["bedrooms"]) if not pd.isna(r["bedrooms"]) else 0
+        baths = int(r["bathrooms"]) if not pd.isna(r["bathrooms"]) else 0
 
-        ptype = _pick(rng, C.PROPERTY_TYPES, C.PROPERTY_TYPE_WEIGHTS)
-        district = _pick(rng, C.DISTRICTS, C.DISTRICT_WEIGHTS)
-
-        # Diện tích tương quan (thô) với giá.
-        area = round(float(rng.normal(35 + price * 12, 15)), 1)
-        area = max(20.0, area)
-        bedrooms = int(np.clip(round(rng.normal(1 + price * 0.5, 1)), 0, 6))
-        bathrooms = int(np.clip(round(bedrooms * 0.7 + rng.normal(0, 0.5)), 1, 5))
-
-        p_feat = _FEATURE_BASE_P[segment]
         features = {}
-        for f in AMENITY_FIELDS + ACCESSIBILITY_FIELDS + VIEW_FIELDS:
-            features[f] = bool(rng.random() < p_feat)
+        for f in _FEATURE_FIELDS:
+            v = r[f] if f in r else 0
+            features[f] = bool(int(v)) if not pd.isna(v) else False
 
+        title = str(r["title"]) if not pd.isna(r.get("title")) else f"BĐS {r['listing_id']}"
         listings.append(
             Listing(
-                listing_id=lid,
-                title=f"{ptype} {bedrooms}PN tại {district}",
-                property_type=ptype,
-                district=district,
-                price_billion=price,
-                area_sqm=area,
-                bedrooms=bedrooms,
-                bathrooms=bathrooms,
-                budget_group=segment,
+                listing_id=int(r["listing_id"]),
+                title=title[:120],
+                property_type=str(r["property_type"]),
+                district=str(r["district"]),
+                address=str(r["address"]) if not pd.isna(r.get("address")) else None,
+                city_province=str(r["city_province"]) if not pd.isna(r.get("city_province")) else None,
+                price_billion=round(price, 3),
+                area_sqm=round(area, 1),
+                bedrooms=max(0, beds),
+                bathrooms=max(0, baths),
+                budget_group=_budget_group(price),
                 features=features,
             )
         )
+        if limit and len(listings) >= limit:
+            break
+
     assign_area_price_tier(listings)
     return listings
 
 
-# Ngưỡng tercile theo quận: dưới p33 = cheap, p33..p66 = mid, trên p66 = premium.
+# --- price tier tương đối theo quận (giữ nguyên logic cũ, nay trên quận THẬT) ---
 _AREA_TIER_QUANTILES = (0.33, 0.66)
-_MIN_LISTINGS_PER_DISTRICT = 6  # quá ít thì dùng ngưỡng toàn thị trường
+_MIN_LISTINGS_PER_DISTRICT = 6
 
 
 def district_price_quantiles(listings: List[Listing]):
-    """Trả về {district: (p33, p66)} của price_billion; quận quá ít listing dùng
-    ngưỡng toàn cục (khoá '_global')."""
     from collections import defaultdict
-
     by_dist = defaultdict(list)
     all_prices = []
     for l in listings:
@@ -144,11 +143,23 @@ def _tier_for(price: float, lo: float, hi: float) -> str:
 
 
 def assign_area_price_tier(listings: List[Listing]) -> None:
-    """Gán price_tier_area cho từng listing dựa trên phân bổ giá TRONG quận của nó."""
     stats = district_price_quantiles(listings)
     for l in listings:
         lo, hi = stats.get(l.district, stats["_global"])
         l.price_tier_area = _tier_for(l.price_billion, lo, hi)
+
+
+def derive_pools(listings: List[Listing]) -> Tuple[List[str], np.ndarray, List[str], np.ndarray]:
+    """Rút danh sách quận & loại BĐS THẬT (kèm trọng số theo tần suất) để
+    generate_users sinh preference khớp với listing thật."""
+    from collections import Counter
+    dc = Counter(l.district for l in listings)
+    pc = Counter(l.property_type for l in listings)
+    districts = [d for d, _ in dc.most_common()]
+    d_w = np.array([dc[d] for d in districts], dtype=float)
+    ptypes = [p for p, _ in pc.most_common()]
+    p_w = np.array([pc[p] for p in ptypes], dtype=float)
+    return districts, d_w / d_w.sum(), ptypes, p_w / p_w.sum()
 
 
 def save_catalog(listings: List[Listing], path: str = LISTINGS_PATH) -> None:
@@ -165,9 +176,10 @@ def load_catalog(path: str = LISTINGS_PATH) -> List[Listing]:
 if __name__ == "__main__":
     cat = build_catalog()
     save_catalog(cat)
-    seg_counts = {}
+    seg = {}
     for l in cat:
-        seg_counts[l.budget_group] = seg_counts.get(l.budget_group, 0) + 1
-    print(f"[catalog] {len(cat)} listings -> {LISTINGS_PATH}")
-    print("[catalog] budget segment distribution:",
-          {k: round(v / len(cat), 3) for k, v in sorted(seg_counts.items())})
+        seg[l.budget_group] = seg.get(l.budget_group, 0) + 1
+    print(f"[catalog] {len(cat)} listing THẬT (Final_Data.csv) -> {LISTINGS_PATH}")
+    print("[catalog] budget_group:", {k: round(v / len(cat), 3) for k, v in sorted(seg.items())})
+    print("[catalog] số quận (phường) thật:", len({l.district for l in cat}))
+    print("[catalog] loại BĐS:", {l.property_type for l in cat})

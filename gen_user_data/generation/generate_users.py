@@ -69,8 +69,19 @@ def _liked_amenities(rng, *, children: int, intent: str) -> List[str]:
     return [out[i] for i in sorted(idx)]
 
 
-def generate_users(seed: int = C.RANDOM_SEED, n: int = C.NUM_USERS) -> List[UserProfile]:
+def generate_users(seed: int = C.RANDOM_SEED, n: int = C.NUM_USERS,
+                   pools=None) -> List[UserProfile]:
+    """pools = (districts, district_weights, ptypes, ptype_weights) rút từ catalog
+    THẬT (catalog.derive_pools). None -> fallback list trong config (để test/độc lập)."""
     rng = np.random.default_rng(seed + 1)  # offset để độc lập với catalog
+
+    if pools is not None:
+        districts, district_w, ptypes_pool, ptype_w = pools
+    else:
+        districts = C.DISTRICTS
+        district_w = np.array(C.DISTRICT_WEIGHTS) / np.sum(C.DISTRICT_WEIGHTS)
+        ptypes_pool = C.PROPERTY_TYPES
+        ptype_w = np.array(C.PROPERTY_TYPE_WEIGHTS) / np.sum(C.PROPERTY_TYPE_WEIGHTS)
 
     seg_names = list(C.BUDGET_SEGMENTS)
     seg_w = np.array([C.BUDGET_SEGMENTS[s]["weight"] for s in seg_names])
@@ -90,10 +101,9 @@ def generate_users(seed: int = C.RANDOM_SEED, n: int = C.NUM_USERS) -> List[User
         income = _weighted(rng, C.INCOME_WEIGHTS)
         children = _sample_children(rng, marital)
 
-        n_dist = int(rng.integers(1, 4))
-        d_idx = rng.choice(len(C.DISTRICTS), size=n_dist, replace=False,
-                           p=np.array(C.DISTRICT_WEIGHTS) / np.sum(C.DISTRICT_WEIGHTS))
-        pref_districts = [C.DISTRICTS[j] for j in d_idx]
+        n_dist = int(rng.integers(1, min(4, len(districts) + 1)))
+        d_idx = rng.choice(len(districts), size=n_dist, replace=False, p=district_w)
+        pref_districts = [districts[j] for j in d_idx]
 
         # càng nhiều con càng cần nhiều phòng ngủ (>=2 nếu có con, +1 nếu >=3 con)
         if children >= 3:
@@ -103,10 +113,9 @@ def generate_users(seed: int = C.RANDOM_SEED, n: int = C.NUM_USERS) -> List[User
         else:
             min_beds = int(rng.integers(1, 3))
 
-        n_ptype = int(rng.integers(1, 3))
-        pt_idx = rng.choice(len(C.PROPERTY_TYPES), size=n_ptype, replace=False,
-                            p=np.array(C.PROPERTY_TYPE_WEIGHTS) / np.sum(C.PROPERTY_TYPE_WEIGHTS))
-        ptypes = [C.PROPERTY_TYPES[j] for j in pt_idx]
+        n_ptype = int(rng.integers(1, min(3, len(ptypes_pool) + 1)))
+        pt_idx = rng.choice(len(ptypes_pool), size=n_ptype, replace=False, p=ptype_w)
+        ptypes = [ptypes_pool[j] for j in pt_idx]
 
         prefs = ExplicitPreferences(
             preferred_districts=pref_districts,

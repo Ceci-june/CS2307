@@ -38,7 +38,9 @@ def main(limit_listings: int | None = None):
     print(f"  {len(catalog)} listings; segments={ {k: round(v/len(catalog),3) for k,v in seg.items()} }")
 
     print("\n== 2/4 Generating users ==")
-    users = generate_users()
+    from catalog import derive_pools
+    pools = derive_pools(catalog)   # quận & loại BĐS THẬT -> user preference khớp listing
+    users = generate_users(pools=pools)
     if llm.enabled:
         n = enrich_personas(users, llm)
         print(f"  [llm] persona: {n}/{len(users)} user")

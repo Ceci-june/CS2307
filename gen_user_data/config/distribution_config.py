@@ -81,7 +81,11 @@ P_RELEVANT_INTERACTION = 0.75
 # (contact/save). Hệ số này khuếch đại tương quan relevance -> action strength.
 RELEVANCE_ACTION_BOOST = 1.6
 
-# --- Districts (HCM + Bình Dương lân cận, khớp mẫu trong guide) --------------
+# --- Districts: CHỈ LÀ FALLBACK ----------------------------------------------
+# Quận/phường THẬT dùng cho listing & user preference được rút từ
+# Data/Final_Data.csv qua catalog.derive_pools() (tên phường/xã SAU sáp nhập).
+# Danh sách dưới (tên quận CŨ) chỉ dùng khi gọi generate_users() độc lập, không
+# truyền pools (vd test) — pipeline chính KHÔNG dùng.
 DISTRICTS = [
     "Quận 1", "Quận 2", "Quận 3", "Quận 4", "Quận 7", "Quận 9",
     "Quận Bình Thạnh", "Quận Gò Vấp", "Quận Thủ Đức", "Quận Tân Bình",
