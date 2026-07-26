@@ -152,6 +152,76 @@ def export_segment_affinity() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+# --- v2: users_v2.json (nested -> phẳng) ------------------------------------
+def export_users_v2() -> pd.DataFrame:
+    path = os.path.join(DATA_DIR, "users_v2.json")
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    rows = []
+    for u in _read_path(path):
+        ep, ia = u["explicit_preferences"], u["inferred_attributes"]
+
+        def inf(f):  # (value, confidence)
+            v = ia.get(f, {})
+            return v.get("value"), v.get("confidence")
+
+        age_v, age_c = inf("age_group")
+        mar_v, mar_c = inf("marital_status")
+        chi_v, chi_c = inf("children")
+        inc_v, inc_c = inf("income_level")
+        br = ep.get("budget_range") or [None, None]
+        rows.append({
+            "user_id": u["user_id"], "segment": u.get("segment"),
+            "primary_intent": u.get("primary_intent"),
+            "created_at": u.get("created_at"), "updated_at": u.get("updated_at"),
+            "preferred_districts": "|".join(p["value"] for p in ep["preferred_districts"]),
+            "property_type": "|".join(p["value"] for p in ep["property_type"]),
+            "liked_amenities": "|".join(f"{p['value']}:{p['weight']}" for p in ep["liked_amenities"]),
+            "min_bedrooms": ep.get("min_bedrooms"),
+            "budget_min": br[0], "budget_max": br[1],
+            "age_group": age_v, "age_group_conf": age_c,
+            "marital_status": mar_v, "marital_conf": mar_c,
+            "children": chi_v, "children_conf": chi_c,
+            "income_level": inc_v, "income_conf": inc_c,
+            "persona": u.get("persona"),
+        })
+    return pd.DataFrame(rows)
+
+
+# --- v2: recommendation_events_v2_claude.json (long: 1 dòng / recommended item) ---
+def export_recommendation_events_claude() -> pd.DataFrame:
+    path = os.path.join(DATA_DIR, "recommendation_events_v2_claude.json")
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    rows = []
+    for ev in _read_path(path):
+        ctx = ev["context"]
+        f = ctx.get("filters_applied", {})
+        llm = ev.get("llm_output", {})
+        chosen_order = list(llm.keys())  # thứ tự = xếp hạng Claude
+        for it in ev["recommended_items"]:
+            lid = str(it["listing_id"])
+            out = llm.get(lid)
+            rows.append({
+                "result_set_id": ev["result_set_id"], "user_id": ev.get("user_id"),
+                "session_id": ev["session_id"], "timestamp": ev["timestamp"],
+                "algorithm_version": ev["algorithm_version"],
+                "raw_query": ctx.get("raw_query"), "inferred_intent": ctx.get("inferred_intent"),
+                "budget_group": ctx.get("budget_group"),
+                "filter_district": f.get("district"), "filter_price_max": f.get("price_max"),
+                "filter_bedrooms": f.get("bedrooms"),
+                "listing_id": it["listing_id"], "retrieval_rank": it["rank"], "score": it["score"],
+                "matched_features": "|".join(it.get("matched_features", [])),
+                "partial_match_features": "|".join(it.get("partial_match_features", [])),
+                "llm_chosen": int(out is not None),
+                "llm_rank": (chosen_order.index(lid) if out is not None else None),
+                "explanation": out["explanation"] if out else None,
+                "comparison": out.get("comparison") if out else None,
+                "model_name": out["model_name"] if out else None,
+            })
+    return pd.DataFrame(rows)
+
+
 def main():
     os.makedirs(CSV_DIR, exist_ok=True)
     # (tên file, hàm, bắt buộc?) — không bắt buộc thì thiếu nguồn sẽ bỏ qua
@@ -166,6 +236,8 @@ def main():
         ("popularity.csv", export_popularity, False),
         ("query_expansion.csv", export_query_expansion, False),
         ("segment_affinity.csv", export_segment_affinity, False),
+        ("users_v2.csv", export_users_v2, False),
+        ("recommendation_events_v2_claude.csv", export_recommendation_events_claude, False),
     ]
     for fname, fn, required in exporters:
         df = fn()
