@@ -463,6 +463,50 @@ Idempotent (ghi đè file + `INSERT OR REPLACE`). Dùng embeddings đã **dedup*
 
 - **RAG metrics** (`metrics/rag.py`, chưa làm): khi tích hợp chatbot LLM giải thích
   gợi ý → thêm Answer Relevance / Context Precision / Faithfulness (Ragas / TruLens).
-- **Thay thuộc tính mô phỏng bằng dữ liệu thật:** chỉ cần đổi
-  `catalog.load_listing_ids` / thêm bước enrich từ dump Postgres — phần còn lại
-  của pipeline giữ nguyên.
+  `RecommendationEvent` (schema v2) chính là input sẵn (query+context+answer).
+- **Thay thuộc tính mô phỏng bằng dữ liệu thật:** listings đã dùng `Final_Data.csv`;
+  chỉ user/interaction là mô phỏng (không có data user thật).
+
+---
+
+## 11. Schema v2 (song song — `schemas_v2.py`)
+
+Bản chuẩn hoá hơn, **chạy song song, KHÔNG đè v1**. Sinh bằng:
+
+```bash
+python generate_all_v2.py     # -> data/{users,recommendation_events,interactions}_v2.json
+```
+
+Hai thay đổi triết lý:
+
+1. **UserProfile tách 2 loại** — `explicit_preferences` (user chủ động cung cấp: filter/chat,
+   mỗi mục là `Preference{value, weight, source}` có trọng số cho KG) vs
+   `inferred_attributes` (demographic suy luận: mỗi field bọc `InferredValue{value,
+   confidence, evidence}`, mặc định `None`/conf 0 = "chưa biết").
+2. **Tách `RecommendationEvent` khỏi `Interaction`**:
+   - `RecommendationEvent` — 1 dòng/1 lần trả kết quả, theo **LLM-as-reranker**:
+     retrieval lấy **10 ứng viên** (`recommended_items`, có `rank/score/matched_features`)
+     → đưa **cả 10 vào LLM** → LLM **chọn & xếp ra 3** căn tốt nhất (`llm_output`:
+     explanation + comparison). `algorithm_version="llm_rerank_v2"`. → chính là
+     (query, context, answer) cho **RAG eval** (Ragas) và tính **Context
+     Precision/Recall theo rank thật** — không cần sampled-negatives.
+     (Offline/không key: fallback lấy top-3 theo retrieval; chỉnh `TOP_K`/`LLM_OUTPUT_K` trong `gen_v2.py`.)
+   - `Interaction` — 1 dòng/1 hành động user, trỏ ngược `result_set_id` + `rank_position`.
+
+| File | Vai trò |
+|---|---|
+| `schemas_v2.py` | schema v2 (Preference, InferredValue, RecommendationEvent…) |
+| `config/vocab_real_data.py` · `config/districts_real.json` | vocab & 112 phường/xã **thật** (validate v2) |
+| `extract_vocab.py` | rút vocab/districts từ `Final_Data.csv` |
+| `generation/gen_v2.py` · `generate_all_v2.py` | sinh dữ liệu v2 (rerank bằng LLM cấu hình, mặc định Groq 70b) |
+| `prep_rerank.py` · `apply_rerank.py` | rerank bằng **workflow agent Claude** (10→3) → ghi `*_v2_claude.json` |
+| `data/*_v2.json` | dữ liệu v2 do **Groq 70b**/template rerank (v1 `users.json`/`interactions.json` **giữ nguyên**) |
+| `data/*_v2_claude.json` | biến thể do **Claude agents** rerank — để so sánh chất lượng chọn |
+
+**Hai reranker (cùng bộ 10 ứng viên, khác "người chọn"):**
+- Groq 70b (in-pipeline): `USE_LLM=1 python generate_all_v2.py` → `*_v2.json`.
+- Claude agents (offline): `python prep_rerank.py` → workflow rerank → `python apply_rerank.py` → `*_v2_claude.json`.
+  Trên bộ hiện tại, Claude chọn top-3 **khác 84%** so với heuristic (tôn trọng ràng buộc cứng loại nhà/ngân sách trước, rồi mới tới tiện ích gia đình).
+
+> Pipeline v1 (KG/load/precompute/eval) **chưa** chuyển sang đọc v2 — migrate dần
+> khi cần (vd RAG eval đọc thẳng `recommendation_events_v2.json`).

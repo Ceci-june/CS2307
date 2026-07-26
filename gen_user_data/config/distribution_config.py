@@ -13,7 +13,7 @@ from __future__ import annotations
 RANDOM_SEED = 20260723
 
 # --- Quy mô sinh -------------------------------------------------------------
-NUM_USERS = 300
+NUM_USERS = 200
 # Số interaction trung bình mỗi user (Poisson lambda). Clamp về [MIN, MAX].
 INTERACTIONS_PER_USER_LAMBDA = 15
 MIN_INTERACTIONS_PER_USER = 10
