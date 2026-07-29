@@ -1,6 +1,40 @@
 # Real Estate Recommendation System
 
-AI-powered real estate recommendation system for the Vietnamese market (Ho Chi Minh City). Uses multi-factor scoring, PhoBERT embeddings for semantic search, and Google Gemini for natural language explanations.
+Hybrid real-estate search for the Vietnamese market. Uses validated structured
+filters, PostgreSQL full-text search, multilingual-E5 embeddings in pgvector,
+evidence-based reranking and deterministic explanations.
+
+## Hybrid search V1
+
+The serving path now uses PostgreSQL and pgvector only; Neo4j is not required for
+search. Vietnamese natural-language queries are parsed into validated hard filters,
+amenity-distance constraints and semantic preferences. Hard constraints are applied
+in parameterized SQL before full-text/vector retrieval and deterministic reranking.
+
+```text
+POST /v1/search/parse
+POST /v1/search
+POST /v1/search/similar/{listing_id}
+```
+
+Prepare a fresh local database (run from the repository root):
+
+```bash
+docker compose up -d --build backend
+
+# Imports Final_Data.csv, graph-ready amenity distances and builds search_text.
+docker compose exec backend \
+  python scripts/build_search_index.py --skip-embeddings
+
+# Downloads multilingual-e5-large once and resumes missing pgvector embeddings.
+docker compose exec -e SEARCH_ALLOW_MODEL_DOWNLOAD=true backend \
+  python scripts/build_search_index.py --skip-catalog-import \
+  --skip-graph-metadata --batch-size 32
+```
+
+Semantic retrieval is enabled only when every active listing has an embedding. Until
+then `/v1/search` remains available in structured + PostgreSQL full-text mode and
+reports embedding coverage when `debug=true`.
 
 ## Architecture
 
@@ -8,7 +42,7 @@ AI-powered real estate recommendation system for the Vietnamese market (Ho Chi M
 |---------|------|-----------|---------|
 | **Backend** | 8000 | FastAPI + Gunicorn | REST API with property search and AI recommendations |
 | **PostgreSQL** | 5432 | pgvector/pgvector:pg16 | Relational data + vector similarity search |
-| **Neo4j** | 7474, 7687 | neo4j:5-community | Property similarity graph + knowledge graph |
+| **Neo4j (optional)** | 7474, 7687 | neo4j:5-community | Offline graph inspection only; not used by search serving |
 | **MinIO** | 9000, 9001 | minio/minio | S3-compatible object storage for property images |
 
 ## Getting Started
@@ -41,7 +75,10 @@ cp .env.example .env
 #   NEO4J_URI=bolt://localhost:7687
 
 # Start infra only
-docker compose up -d postgres minio minio-init neo4j
+docker compose up -d postgres minio minio-init
+
+# Optional graph inspection tools only
+docker compose --profile graph-tools up -d neo4j
 
 # Run backend locally
 cd backend

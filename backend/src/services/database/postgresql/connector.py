@@ -34,5 +34,21 @@ class PostgresConnector:
             logger.error(f"execute_raw_query ex: {e}")
             return None
 
+    def fetch_mappings(self, raw_query: str, **kwargs):
+        """Execute a read query and preserve column names.
+
+        Unlike the legacy method, errors are not converted to an empty result. Search
+        must distinguish an unavailable database from a valid no-result response.
+        """
+        query = text(raw_query)
+        with self.engine.connect() as connection:
+            result = connection.execute(query, kwargs)
+            return [dict(row) for row in result.mappings().all()]
+
+    def execute_write(self, raw_query: str, **kwargs):
+        query = text(raw_query)
+        with self.engine.begin() as connection:
+            return connection.execute(query, kwargs)
+
     def stop(self):
         self.engine.dispose()

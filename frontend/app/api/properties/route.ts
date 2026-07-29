@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8001'
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -8,7 +10,7 @@ export async function GET(request: NextRequest) {
     console.log('[v0] API Route: Proxying request with query:', queryString)
 
     // Build the backend URL with all query parameters
-    const backendUrl = `http://34.87.56.13:1605/v1/properties${queryString ? `?${queryString}` : ''}`
+    const backendUrl = `${BACKEND_URL}/v1/properties${queryString ? `?${queryString}` : ''}`
     console.log('[v0] API Route: Fetching from backend:', backendUrl)
 
     const response = await fetch(backendUrl, {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8001'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -7,7 +9,7 @@ export async function POST(request: NextRequest) {
     console.log('[v0] AI Search API: Received payload:', body)
 
     // Build backend URL
-    const backendUrl = 'http://34.87.56.13:1605/v1/properties/ai-search'
+    const backendUrl = `${BACKEND_URL}/v1/properties/ai-search`
 
     const response = await fetch(backendUrl, {
       method: 'POST',

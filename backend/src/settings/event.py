@@ -3,7 +3,6 @@ from fastapi import FastAPI
 from loguru import logger
 
 from src.services.minio.minio_client import MinioClient
-from src.services.recommendation.recommendation_service import RecommendationService
 from src.services.llm.llm_model import LLModel
 from src.services.database.postgresql.connector import PostgresConnector
 
@@ -13,9 +12,26 @@ config = APPLICATION
 
 
 minio_client = MinioClient(config=APPLICATION)
-recommendation_service = RecommendationService()
 llm_model = LLModel()
 postgres_client = PostgresConnector(config=config)
+
+
+class LegacyRecommendationAdapter:
+    """Compatibility bridge for the deprecated /properties/ai-search endpoint."""
+
+    async def ai_recommendation(self, question: str, **filters):
+        from src.search.schemas import SearchRequest
+        from src.search.service import hybrid_search_service
+
+        request = SearchRequest(query=question, top_k=3, filters=filters)
+        response = await hybrid_search_service.search(request)
+        return True, response["results"], None
+
+    def start(self):
+        return None
+
+
+recommendation_service = LegacyRecommendationAdapter()
 
 
 def create_start_app_handler(app: FastAPI) -> Callable:  # noqa
@@ -24,6 +40,8 @@ def create_start_app_handler(app: FastAPI) -> Callable:  # noqa
         recommendation_service.start()
         llm_model.start()
         postgres_client.start()
+        from src.search.schema import initialize_search_schema
+        initialize_search_schema()
     return start_app
 
 

@@ -21,7 +21,7 @@ export default function RealEstatePage() {
   const handleSearch = useCallback((query: string) => {
     console.log("[v0] Search query:", query)
     // Add the search query to active filters
-    setActiveFilters(prev => ({
+    setActiveFilters((prev: Record<string, unknown>) => ({
       ...prev,
       query: query
     }))

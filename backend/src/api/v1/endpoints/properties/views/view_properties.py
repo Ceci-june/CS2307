@@ -7,6 +7,7 @@ from src.api.v1.endpoints.properties.controllers.controller_properties import (
 from src.api.v1.endpoints.properties.schemas.properties import (
     AISearchRequestModel,
 )
+from src.search.service import hybrid_search_service
 
 router = APIRouter()
 
@@ -213,3 +214,17 @@ async def view_get_ai_search(
         garage=data.garage,
         terrace=data.terrace,
     )
+
+
+@router.get("/{property_id}/similar", summary="Get similar properties from pgvector")
+async def view_get_similar_properties(property_id: str, limit: int = Query(default=10, ge=1, le=50)):
+    result = await hybrid_search_service.similar(property_id, limit)
+    return {"data": result, "errors": [], "status": "success"}
+
+
+@router.get("/{property_id}", summary="Get a property by internal or listing ID")
+async def view_get_property(property_id: str):
+    item = await hybrid_search_service.get_property(property_id)
+    if item is None:
+        return {"data": None, "errors": [{"detail": "Property not found"}], "status": "failed"}
+    return {"data": item, "errors": [], "status": "success"}

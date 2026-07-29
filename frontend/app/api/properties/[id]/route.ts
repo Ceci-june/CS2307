@@ -1,3 +1,5 @@
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8001'
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -9,7 +11,7 @@ export async function GET(
   }
 
   try {
-    const response = await fetch(`http://34.87.56.13:1605/v1/properties/${id}`, {
+    const response = await fetch(`${BACKEND_URL}/v1/properties/${id}`, {
       headers: {
         'Accept': 'application/json',
       },

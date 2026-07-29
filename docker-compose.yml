@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -44,6 +44,7 @@ services:
 
   neo4j:
     image: neo4j:5-community
+    profiles: ["graph-tools"]
     restart: unless-stopped
     environment:
       - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/changeme}
@@ -52,6 +53,7 @@ services:
       - "7687:7687"
     volumes:
       - neo4j_data:/data
+      - ./Data/real_estate_graph_ready:/csv/real_estate_graph_ready:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
       interval: 10s
@@ -62,12 +64,14 @@ services:
     build: ./backend
     restart: unless-stopped
     env_file: .env
+    volumes:
+      - ./.env:/app/.env:ro
+      - ./Data:/app/Data:ro
+      - huggingface_cache:/root/.cache/huggingface
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       postgres:
-        condition: service_healthy
-      neo4j:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
@@ -80,3 +84,4 @@ volumes:
   pgdata:
   minio_data:
   neo4j_data:
+  huggingface_cache:

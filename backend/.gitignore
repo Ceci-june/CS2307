@@ -730,6 +730,8 @@ files.txt
 [Ll]ib64
 [Ll]ocal
 [Ss]cripts
+!scripts/
+!scripts/build_search_index.py
 pyvenv.cfg
 pip-selfcheck.json
 

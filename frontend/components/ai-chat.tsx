@@ -72,55 +72,17 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
     setIsLoading(true)
 
     try {
-      // Create a formatted payload specifically for the AI backend
-      // Use strict fallbacks to ensure max_price and max_area are never undefined
       const apiPayload = {
-        question: userQuestion,
-        min_price: currentFilters.min_price || 0,
-        max_price: (currentFilters.max_price === 0 || !currentFilters.max_price) ? 999999 : currentFilters.max_price,
-        min_area: currentFilters.min_area || 0,
-        max_area: (currentFilters.max_area === 0 || !currentFilters.max_area) ? 999999 : currentFilters.max_area,
-        bedrooms: currentFilters.bedrooms || 0,
-        bathrooms: currentFilters.bathrooms || 0,
-        legal_status: currentFilters.legal_status || "",
-        furniture: currentFilters.furniture || "",
-        house_direction: currentFilters.house_direction || "",
-        balcony_direction: currentFilters.balcony_direction || "",
-        district: currentFilters.district || "",
-        property_type: currentFilters.property_type || "",
-        length_road_entrance: 0,
-        // Force all boolean fields to be true/false, NOT 1/0
-        pool: !!currentFilters.pool,
-        gym: !!currentFilters.gym,
-        park: !!currentFilters.park,
-        bbq: !!currentFilters.bbq,
-        kids_playground: !!currentFilters.kids_playground,
-        sports_court: !!currentFilters.sports_court,
-        security_24h: !!currentFilters.security_24h,
-        reception: !!currentFilters.reception,
-        elevator: !!currentFilters.elevator,
-        parking: !!currentFilters.parking,
-        near_metro: !!currentFilters.near_metro,
-        near_bus: !!currentFilters.near_bus,
-        near_highway: !!currentFilters.near_highway,
-        near_school: !!currentFilters.near_school,
-        near_hospital: !!currentFilters.near_hospital,
-        near_mall: !!currentFilters.near_mall,
-        near_market: !!currentFilters.near_market,
-        near_park: !!currentFilters.near_park,
-        river_view: !!currentFilters.river_view,
-        park_view: !!currentFilters.park_view,
-        city_view: !!currentFilters.city_view,
-        balcony: !!currentFilters.balcony,
-        garden: !!currentFilters.garden,
-        garage: !!currentFilters.garage,
-        terrace: !!currentFilters.terrace,
+        query: userQuestion,
+        top_k: 3,
+        page: 1,
+        filters: currentFilters,
       }
 
       console.log("[v0] AI Search payload:", apiPayload)
 
       // Use the API proxy route
-      const response = await fetch("/api/properties/ai-search", {
+      const response = await fetch("/api/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +98,7 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
       console.log("[v0] AI Search response:", data)
 
       // Parse response
-      const properties = data.data || []
+      const properties = data.data?.results || []
 
       // Update the last message with AI response
       setMessages(prev => {
