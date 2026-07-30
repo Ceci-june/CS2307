@@ -99,6 +99,7 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
 
       // Parse response
       const properties = data.data?.results || []
+      const assistantAnswer = data.data?.assistant_answer
 
       // Update the last message with AI response
       setMessages(prev => {
@@ -106,7 +107,7 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
         updated[updated.length - 1] = {
           role: "ai",
           content: properties.length > 0 
-            ? "Dựa trên yêu cầu của bạn, tôi tìm thấy các bất động sản sau:"
+            ? assistantAnswer || "Dựa trên yêu cầu của bạn, tôi tìm thấy các bất động sản sau:"
             : "Xin lỗi, tôi không tìm thấy bất động sản nào phù hợp với yêu cầu của bạn. Vui lòng thử thay đổi tiêu chí tìm kiếm.",
           properties: properties.length > 0 ? properties : undefined,
           timestamp: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })

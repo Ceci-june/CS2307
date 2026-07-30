@@ -182,15 +182,18 @@ def backfill(batch_size: int, skip_embeddings: bool, force: bool = False) -> Non
     rows = postgres_client.fetch_mappings(f"SELECT * FROM properties {where} ORDER BY id")
     print(f"[index] building search text for {len(rows)} properties")
     if not skip_embeddings:
-        print(f"[index] embedding device: {embedding_model.device_name}")
+        print(
+            f"[index] embedding provider: {embedding_model.provider}; "
+            f"device: {embedding_model.device_name}"
+        )
     for start in range(0, len(rows), batch_size):
         batch = rows[start:start + batch_size]
         texts = [build_listing_search_text(row) for row in batch]
         vectors = None if skip_embeddings else embedding_model.encode(texts, kind="passage")
         if not skip_embeddings and vectors is None:
             raise RuntimeError(
-                "multilingual-e5-large is unavailable. Set SEARCH_ALLOW_MODEL_DOWNLOAD=true "
-                "or pre-download the model; use --skip-embeddings for text-only indexing."
+                "Embedding generation is unavailable. Check the local model or LM Studio "
+                "configuration; use --skip-embeddings for text-only indexing."
             )
         for index, (row, search_text) in enumerate(zip(batch, texts)):
             vector = None if vectors is None else "[" + ",".join(f"{float(x):.8f}" for x in vectors[index]) + "]"

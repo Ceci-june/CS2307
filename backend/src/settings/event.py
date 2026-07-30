@@ -24,7 +24,9 @@ class LegacyRecommendationAdapter:
         from src.search.service import hybrid_search_service
 
         request = SearchRequest(query=question, top_k=3, filters=filters)
-        response = await hybrid_search_service.search(request)
+        # This legacy controller already performs its own LLM generation after
+        # retrieval, so skip the new chat-answer pass to avoid a duplicate call.
+        response = await hybrid_search_service.search(request, generate_llm_answer=False)
         return True, response["results"], None
 
     def start(self):

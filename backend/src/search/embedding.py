@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
+from collections import OrderedDict
 from threading import Lock
 from typing import List, Optional
 
 import numpy as np
+import requests
 import torch
 from loguru import logger
 from transformers import AutoModel, AutoTokenizer
@@ -15,15 +16,29 @@ class E5EmbeddingModel:
     dimension = 1024
 
     def __init__(self):
+        self.provider = os.getenv("SEARCH_EMBEDDING_PROVIDER", "local").strip().lower()
+        if self.provider not in {"local", "lmstudio"}:
+            logger.warning(f"Unknown embedding provider '{self.provider}'; falling back to local CPU")
+            self.provider = "local"
         self.model_name = os.getenv("SEARCH_EMBEDDING_MODEL", "intfloat/multilingual-e5-large")
         self.allow_download = os.getenv("SEARCH_ALLOW_MODEL_DOWNLOAD", "false").lower() in {"1", "true", "yes"}
-        self.requested_device = os.getenv("SEARCH_EMBEDDING_DEVICE", "auto").strip().lower()
+        # CPU remains the safe default. GPU/auto selection must be explicitly enabled.
+        self.requested_device = os.getenv("SEARCH_EMBEDDING_DEVICE", "cpu").strip().lower()
         self._device = self._resolve_device(self.requested_device)
+        self.base_url = os.getenv("SEARCH_EMBEDDING_BASE_URL", "http://127.0.0.1:1234/v1").rstrip("/")
+        self.api_key = os.getenv("SEARCH_EMBEDDING_API_KEY", "").strip()
+        try:
+            self.request_timeout = float(os.getenv("SEARCH_EMBEDDING_TIMEOUT", "60"))
+        except ValueError:
+            logger.warning("Invalid SEARCH_EMBEDDING_TIMEOUT; using 60 seconds")
+            self.request_timeout = 60.0
         self._tokenizer = None
         self._model = None
         self._load_failed = False
         self._lock = Lock()
         self._inference_lock = Lock()
+        self._query_cache = OrderedDict()
+        self._cache_lock = Lock()
 
     @staticmethod
     def _mps_available() -> bool:
@@ -62,13 +77,15 @@ class E5EmbeddingModel:
 
     @property
     def device_name(self) -> str:
-        return str(self._device)
+        return "lmstudio-api" if self.provider == "lmstudio" else str(self._device)
 
     @property
     def is_gpu(self) -> bool:
-        return self._device.type in {"cuda", "mps"}
+        return self.provider == "local" and self._device.type in {"cuda", "mps"}
 
     def _load(self) -> bool:
+        if self.provider == "lmstudio":
+            return True
         if self._model is not None:
             return True
         if self._load_failed:
@@ -107,10 +124,14 @@ class E5EmbeddingModel:
         return (last_hidden_state * mask).sum(1) / mask.sum(1).clamp(min=1e-9)
 
     def encode(self, texts: List[str], kind: str = "query") -> Optional[np.ndarray]:
-        if not texts or not self._load():
+        if not texts:
             return None
         prefix = "query: " if kind == "query" else "passage: "
         prepared = [prefix + (text or "") for text in texts]
+        if self.provider == "lmstudio":
+            return self._encode_lmstudio(prepared)
+        if not self._load():
+            return None
         inputs = self._tokenizer(prepared, max_length=512, padding=True, truncation=True, return_tensors="pt")
         inputs = {name: tensor.to(self._device) for name, tensor in inputs.items()}
         # One model instance is shared by API requests and offline batches. The lock
@@ -121,10 +142,53 @@ class E5EmbeddingModel:
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
         return embeddings.cpu().numpy().astype("float32")
 
-    @lru_cache(maxsize=512)
+    def _encode_lmstudio(self, texts: List[str]) -> Optional[np.ndarray]:
+        endpoint = self.base_url if self.base_url.endswith("/embeddings") else f"{self.base_url}/embeddings"
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        try:
+            response = requests.post(
+                endpoint,
+                headers=headers,
+                json={"model": self.model_name, "input": texts},
+                timeout=self.request_timeout,
+            )
+            response.raise_for_status()
+            data = response.json().get("data", [])
+            ordered = sorted(data, key=lambda item: item.get("index", 0))
+            vectors = np.asarray([item["embedding"] for item in ordered], dtype="float32")
+            if vectors.ndim != 2 or vectors.shape != (len(texts), self.dimension):
+                raise ValueError(
+                    f"expected {len(texts)} vectors with {self.dimension} dimensions, got {vectors.shape}"
+                )
+            if not np.all(np.isfinite(vectors)):
+                raise ValueError("LM Studio returned a non-finite embedding")
+            norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+            if np.any(norms == 0):
+                raise ValueError("LM Studio returned a zero-length embedding")
+            return (vectors / norms).astype("float32")
+        except (requests.RequestException, AttributeError, KeyError, TypeError, ValueError) as exc:
+            logger.warning(f"Semantic search disabled; LM Studio embedding request failed: {exc}")
+            return None
+
     def encode_query(self, text: str):
+        with self._cache_lock:
+            cached = self._query_cache.get(text)
+            if cached is not None:
+                self._query_cache.move_to_end(text)
+                return cached
         result = self.encode([text], kind="query")
-        return None if result is None else result[0]
+        if result is None:
+            # Do not cache transient local/LM Studio failures.
+            return None
+        vector = result[0]
+        with self._cache_lock:
+            self._query_cache[text] = vector
+            self._query_cache.move_to_end(text)
+            if len(self._query_cache) > 512:
+                self._query_cache.popitem(last=False)
+        return vector
 
 
 embedding_model = E5EmbeddingModel()

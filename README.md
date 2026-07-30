@@ -37,11 +37,13 @@ Semantic retrieval is enabled only when every active listing has an embedding. U
 then `/v1/search` remains available in structured + PostgreSQL full-text mode and
 reports embedding coverage when `debug=true`.
 
-### GPU embedding
+### Embedding provider
 
-`SEARCH_EMBEDDING_DEVICE=auto` automatically selects CUDA, then Apple MPS, then CPU.
-You can explicitly select `cpu`, `cuda`, `cuda:0`, or `mps`. If the requested GPU is
-unavailable or model transfer fails, embedding safely falls back to CPU.
+The default is `SEARCH_EMBEDDING_PROVIDER=local` with
+`SEARCH_EMBEDDING_DEVICE=cpu`. To opt into local GPU detection, set the device to
+`auto` (CUDA, then Apple MPS, then CPU), or select `cuda`, `cuda:0`, or `mps`.
+If the requested GPU is unavailable or model transfer fails, embedding safely
+falls back to CPU.
 
 For an NVIDIA GPU exposed to Docker, apply the GPU override:
 
@@ -53,6 +55,23 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml \
 Apple MPS works when the backend/index script runs directly on macOS; Docker Desktop's
 Linux VM does not expose MPS. Search debug output includes `embedding_device` and
 `embedding_gpu`. Adjust `--batch-size` when building the index to fit GPU memory.
+
+LM Studio can be used instead of loading the embedding model in the backend. Load
+a 1024-dimensional embedding model in LM Studio, start its local server, then set:
+
+```dotenv
+SEARCH_EMBEDDING_PROVIDER=lmstudio
+SEARCH_EMBEDDING_MODEL=intfloat/multilingual-e5-large
+SEARCH_EMBEDDING_BASE_URL=http://127.0.0.1:1234/v1
+SEARCH_EMBEDDING_API_KEY=
+SEARCH_EMBEDDING_TIMEOUT=60
+```
+
+When the backend runs in Docker, use
+`http://host.docker.internal:1234/v1`. Both index and query vectors must come from
+the same model; rebuild existing vectors with
+`python scripts/build_search_index.py --skip-catalog-import --skip-graph-metadata --force`.
+The API response is validated against the current pgvector schema (`vector(1024)`).
 
 ### Enable Neo4j graph search
 
@@ -193,6 +212,10 @@ Copy `.env.example` to `.env`. Key variables:
 | `BACKEND_LLM_BASE_URL` | Base URL for a custom OpenAI-compatible endpoint |
 | `BACKEND_LLM_API_KEY` | API key for an OpenAI-compatible endpoint |
 | `GEMINI_API_KEYS` | Gemini API key(s), comma-separated (Gemini only) |
+| `SEARCH_USE_LLM_ANSWER` | Generate the chat answer and per-listing insights from hybrid-search evidence |
+| `SEARCH_EMBEDDING_PROVIDER` | `local` (default) or `lmstudio` |
+| `SEARCH_EMBEDDING_DEVICE` | Local inference device; defaults to `cpu` |
+| `SEARCH_EMBEDDING_BASE_URL` | LM Studio base URL, normally ending in `/v1` |
 | `HOST_DB` | `postgres` (Docker) or `localhost` (local dev) |
 | `MINIO_END_POINT` | `minio:9000` (Docker) or `localhost:9000` (local dev) |
 | `NEO4J_AUTH` | Format: `neo4j/<password>` |

@@ -9,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from src.search.embedding import embedding_model
 from src.search.explanation import attach_explanation
 from src.search.graph_repository import graph_repository
+from src.search.llm_answer import LLMSearchAnswerGenerator
 from src.search.query_parser import LLMQueryParser, RuleBasedQueryParser
 from src.search.ranker import diversify, rank_candidates
 from src.search.repository import search_repository
@@ -20,12 +21,13 @@ class HybridSearchService:
     def __init__(self):
         self.rule_parser = RuleBasedQueryParser()
         self.llm_parser = LLMQueryParser(llm_model)
+        self.llm_answer = LLMSearchAnswerGenerator(llm_model)
 
     async def parse(self, query: str, top_k: int = 20, filters: Dict[str, Any] | None = None) -> ParsedSearchQuery:
         deterministic = self.rule_parser.parse(query, top_k=top_k, explicit_filters=filters)
         return await self.llm_parser.parse(query, deterministic)
 
-    async def search(self, request: SearchRequest) -> dict:
+    async def search(self, request: SearchRequest, generate_llm_answer: bool = True) -> dict:
         started = time.perf_counter()
         parsed = await self.parse(request.query, request.top_k, request.filters)
         embedded_count, property_count = await run_in_threadpool(search_repository.embedding_coverage)
@@ -101,6 +103,13 @@ class HybridSearchService:
         start = (request.page - 1) * request.top_k
         selected = diversify(ranked, start + request.top_k)[start:start + request.top_k]
         results = [attach_explanation(item, applied) for item in selected]
+        assistant_answer, llm_answer_generated = (None, False)
+        if generate_llm_answer:
+            assistant_answer, llm_answer_generated = await self.llm_answer.generate(
+                request.query,
+                parsed.model_dump(mode="json"),
+                results,
+            )
         response = {
             "query": request.query,
             "parsed_query": parsed.model_dump(mode="json"),
@@ -108,6 +117,9 @@ class HybridSearchService:
             "page": request.page,
             "top_k": request.top_k,
             "results": results,
+            "assistant_answer": assistant_answer,
+            "llm_answer_enabled": generate_llm_answer and self.llm_answer.enabled(),
+            "llm_answer_generated": llm_answer_generated,
             "relaxations": relaxations,
             "semantic_enabled": query_embedding is not None,
             "graph_enabled": graph_response.available,
@@ -118,6 +130,7 @@ class HybridSearchService:
             response["debug"] = {
                 "retrieved_candidates": len(candidates),
                 "ranking_profile": applied.ranking_profile.value,
+                "embedding_provider": embedding_model.provider,
                 "embedding_model": embedding_model.model_name if query_embedding is not None else None,
                 "embedding_device": embedding_model.device_name,
                 "embedding_gpu": embedding_model.is_gpu,
