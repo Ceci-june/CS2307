@@ -44,6 +44,10 @@ class QueryParserTests(unittest.TestCase):
         parsed = self.parser.parse("Căn hộ phù hợp gia đình trẻ gần trường học")
         self.assertEqual(parsed.ranking_profile, RankingProfile.FAMILY)
 
+    def test_maximum_distance_is_not_a_negative_preference(self):
+        parsed = self.parser.parse("Căn hộ cách metro không quá 3 km")
+        self.assertEqual(parsed.negative_preferences, [])
+
 
 if __name__ == "__main__":
     unittest.main()

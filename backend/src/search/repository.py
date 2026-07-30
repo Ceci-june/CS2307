@@ -16,6 +16,12 @@ BOOLEAN_COLUMNS = {
     "balcony", "garden", "garage", "terrace",
 }
 
+# These textual flags are represented by measured relationships in Neo4j.
+GRAPH_RELATIONSHIP_FEATURES = {
+    "near_metro", "near_bus", "near_school", "near_hospital",
+    "near_mall", "near_market", "near_park",
+}
+
 SELECT_COLUMNS = """
     p.id, p.listing_id, p.listing_type, p.posted_date, p.expiry_date,
     p.property_type, p.city_province, p.district, p.images, p.folder, p.title,
@@ -57,7 +63,13 @@ class SearchRepository:
         )
         return (int(rows[0]["embedded"]), int(rows[0]["total"])) if rows else (0, 0)
 
-    def _where(self, parsed: ParsedSearchQuery) -> Tuple[List[str], Dict]:
+    def _where(
+        self,
+        parsed: ParsedSearchQuery,
+        *,
+        include_amenities: bool = True,
+        graph_validated: bool = False,
+    ) -> Tuple[List[str], Dict]:
         hard = parsed.hard_filters
         where = ["p.is_deleted = false", "p.is_active = true"]
         params: Dict = {}
@@ -92,13 +104,17 @@ class SearchRepository:
             params["excluded_property_types"] = [x.lower() for x in hard.excluded_property_types]
 
         for feature in hard.required_features:
+            if graph_validated and feature in GRAPH_RELATIONSHIP_FEATURES:
+                continue
             if feature in BOOLEAN_COLUMNS:
                 where.append(f"p.{feature} IS TRUE")
         for feature in hard.excluded_features:
+            if graph_validated and feature in GRAPH_RELATIONSHIP_FEATURES:
+                continue
             if feature in BOOLEAN_COLUMNS:
                 where.append(f"COALESCE(p.{feature}, false) IS FALSE")
 
-        for index, amenity in enumerate(parsed.amenity_filters):
+        for index, amenity in enumerate(parsed.amenity_filters if include_amenities else []):
             if not amenity.required:
                 continue
             conditions = ["lad.listing_id = p.listing_id::text", f"lad.category = :amenity_category_{index}"]
@@ -147,6 +163,47 @@ class SearchRepository:
         """
         return [_json_safe(row) for row in postgres_client.fetch_mappings(query, **params)]
 
+    def fetch_graph_candidates(
+        self,
+        parsed: ParsedSearchQuery,
+        listing_ids: List[str],
+        query_embedding: Optional[List[float]],
+    ) -> List[dict]:
+        """Hydrate Neo4j candidates from the PostgreSQL source of truth."""
+        if not listing_ids:
+            return []
+        where, params = self._where(parsed, include_amenities=False, graph_validated=True)
+        params["graph_listing_ids"] = [int(value) for value in listing_ids if str(value).isdigit()]
+        if not params["graph_listing_ids"]:
+            return []
+        where.append("p.listing_id = ANY(:graph_listing_ids)")
+        if query_embedding is not None:
+            params["query_embedding"] = "[" + ",".join(f"{float(x):.8f}" for x in query_embedding) + "]"
+            semantic_sql = "CASE WHEN p.embedding IS NULL THEN 0 ELSE 1 - (p.embedding <=> CAST(:query_embedding AS vector)) END"
+        else:
+            semantic_sql = "0.0"
+        params["text_query"] = parsed.semantic_query
+        query = f"""
+            SELECT {SELECT_COLUMNS},
+                   {semantic_sql} AS semantic_score,
+                   ts_rank_cd(to_tsvector('simple', COALESCE(p.search_text, '')),
+                              plainto_tsquery('simple', :text_query)) AS text_score,
+                   COALESCE((
+                       SELECT json_agg(json_build_object(
+                           'category', lad.category,
+                           'name', lad.amenity_name,
+                           'driving_distance_km', lad.driving_distance_km,
+                           'driving_duration_min', lad.driving_duration_min,
+                           'threshold_km', lad.threshold_km
+                       ) ORDER BY lad.rank)
+                       FROM listing_amenity_distances lad
+                       WHERE lad.listing_id = p.listing_id::text AND lad.rank <= 1
+                   ), '[]'::json) AS amenity_evidence
+            FROM properties p
+            WHERE {' AND '.join(where)}
+        """
+        return [_json_safe(row) for row in postgres_client.fetch_mappings(query, **params)]
+
     def count(self, parsed: ParsedSearchQuery) -> int:
         where, params = self._where(parsed)
         rows = postgres_client.fetch_mappings(
@@ -174,6 +231,23 @@ class SearchRepository:
             LIMIT :limit
         """
         return [_json_safe(row) for row in postgres_client.fetch_mappings(query, listing_id=listing_id, limit=limit)]
+
+    def get_by_listing_ids(self, listing_ids: List[str]) -> List[dict]:
+        numeric_ids = [int(value) for value in listing_ids if str(value).isdigit()]
+        if not numeric_ids:
+            return []
+        rows = postgres_client.fetch_mappings(
+            f"""
+            SELECT {SELECT_COLUMNS}, 0.0 AS semantic_score, 0.0 AS text_score,
+                   '[]'::json AS amenity_evidence
+            FROM properties p
+            WHERE p.listing_id = ANY(:listing_ids)
+              AND p.is_active = true AND p.is_deleted = false
+            ORDER BY p.posted_date DESC NULLS LAST, p.id
+            """,
+            listing_ids=numeric_ids,
+        )
+        return [_json_safe(row) for row in rows]
 
     def get_property(self, property_id: str) -> Optional[dict]:
         rows = postgres_client.fetch_mappings(

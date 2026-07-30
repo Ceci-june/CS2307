@@ -13,6 +13,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
+
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
@@ -21,7 +24,6 @@ DATA_DIR = Path(os.getenv("SEARCH_DATA_DIR", str(DEFAULT_DATA_DIR)))
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from src.search.embedding import embedding_model  # noqa: E402
-from src.search.schema import initialize_search_schema  # noqa: E402
 from src.search.text_builder import build_listing_search_text  # noqa: E402
 from src.settings.event import postgres_client  # noqa: E402
 from src.settings.config import APPLICATION  # noqa: E402
@@ -179,6 +181,8 @@ def backfill(batch_size: int, skip_embeddings: bool, force: bool = False) -> Non
     where = "" if (skip_embeddings or force) else "WHERE embedding IS NULL"
     rows = postgres_client.fetch_mappings(f"SELECT * FROM properties {where} ORDER BY id")
     print(f"[index] building search text for {len(rows)} properties")
+    if not skip_embeddings:
+        print(f"[index] embedding device: {embedding_model.device_name}")
     for start in range(0, len(rows), batch_size):
         batch = rows[start:start + batch_size]
         texts = [build_listing_search_text(row) for row in batch]
@@ -211,9 +215,9 @@ def main():
     parser.add_argument("--skip-catalog-import", action="store_true")
     parser.add_argument("--force", action="store_true", help="Regenerate embeddings that already exist")
     args = parser.parse_args()
+    command.upgrade(Config(str(BACKEND_ROOT / "alembic.ini")), "head")
     postgres_client.start()
     try:
-        initialize_search_schema()
         if not args.skip_catalog_import:
             import_properties(DATA_DIR / "Final_Data.csv")
         if not args.skip_graph_metadata:

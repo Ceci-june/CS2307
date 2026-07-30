@@ -40,14 +40,16 @@ def create_start_app_handler(app: FastAPI) -> Callable:  # noqa
         recommendation_service.start()
         llm_model.start()
         postgres_client.start()
-        from src.search.schema import initialize_search_schema
-        initialize_search_schema()
+        from src.search.graph_repository import graph_repository
+        graph_repository.start()
     return start_app
 
 
 def create_stop_app_handler(app: FastAPI) -> Callable:  # noqa
     @logger.catch
     async def stop_app() -> None:
+        from src.search.graph_repository import graph_repository
+        graph_repository.stop()
         minio_client.stop()
         postgres_client.stop()
     return stop_app

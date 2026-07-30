@@ -23,7 +23,7 @@ from src.search.schemas import (
 )
 
 
-MUST_WORDS = ("bat buoc", "phai co", "chi lay", "khong vuot qua")
+MUST_WORDS = ("bat buoc", "phai co", "chi lay", "khong vuot qua", "khong qua")
 
 
 class RuleBasedQueryParser:
@@ -174,7 +174,12 @@ class RuleBasedQueryParser:
 
     @staticmethod
     def _negative_phrases(query: str):
-        return [m.group(1).strip() for m in re.finditer(r"(?:không|tránh)\s+([^,;.]+)", query.lower())]
+        # Comparative constraints such as "không quá 3 km" are limits, not
+        # negative preferences.
+        return [
+            match.group(1).strip()
+            for match in re.finditer(r"(?:tránh|không\s+(?!quá\b|vượt\b))([^,;.]+)", query.lower())
+        ]
 
     @staticmethod
     def apply_explicit_filters(parsed: ParsedSearchQuery, filters: Dict[str, Any]) -> None:
@@ -228,6 +233,7 @@ class LLMQueryParser:
             parsed = ParsedSearchQuery.model_validate_json(raw.strip().removeprefix("```json").removesuffix("```").strip())
             # Deterministic constraints win over LLM output.
             parsed.hard_filters = fallback.hard_filters
+            parsed.amenity_filters = fallback.amenity_filters
             parsed.protected_constraints = fallback.protected_constraints
             return parsed
         except Exception:

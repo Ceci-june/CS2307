@@ -2,14 +2,15 @@
 
 Hybrid real-estate search for the Vietnamese market. Uses validated structured
 filters, PostgreSQL full-text search, multilingual-E5 embeddings in pgvector,
-evidence-based reranking and deterministic explanations.
+Neo4j relationship retrieval, evidence-based reranking and deterministic explanations.
 
 ## Hybrid search V1
 
-The serving path now uses PostgreSQL and pgvector only; Neo4j is not required for
-search. Vietnamese natural-language queries are parsed into validated hard filters,
-amenity-distance constraints and semantic preferences. Hard constraints are applied
-in parameterized SQL before full-text/vector retrieval and deterministic reranking.
+PostgreSQL remains the source of truth while Neo4j is an optional online candidate
+and evidence source. Vietnamese natural-language queries are parsed into validated
+hard filters, amenity-distance constraints and semantic preferences. PostgreSQL
+FTS/pgvector candidates and Neo4j traversal candidates are merged before deterministic
+reranking. Search falls back to PostgreSQL when Neo4j is unavailable.
 
 ```text
 POST /v1/search/parse
@@ -36,13 +37,76 @@ Semantic retrieval is enabled only when every active listing has an embedding. U
 then `/v1/search` remains available in structured + PostgreSQL full-text mode and
 reports embedding coverage when `debug=true`.
 
+### GPU embedding
+
+`SEARCH_EMBEDDING_DEVICE=auto` automatically selects CUDA, then Apple MPS, then CPU.
+You can explicitly select `cpu`, `cuda`, `cuda:0`, or `mps`. If the requested GPU is
+unavailable or model transfer fails, embedding safely falls back to CPU.
+
+For an NVIDIA GPU exposed to Docker, apply the GPU override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml \
+  --profile graph-search up -d --build backend
+```
+
+Apple MPS works when the backend/index script runs directly on macOS; Docker Desktop's
+Linux VM does not expose MPS. Search debug output includes `embedding_device` and
+`embedding_gpu`. Adjust `--batch-size` when building the index to fit GPU memory.
+
+### Enable Neo4j graph search
+
+Set `SEARCH_USE_NEO4J=true` in `.env`, then start and import the graph:
+
+```bash
+docker compose --profile graph-search up -d neo4j
+docker compose exec neo4j sh -lc \
+  '/var/lib/neo4j/bin/cypher-shell -u "$GRAPH_USER" -p "$GRAPH_PASSWORD" \
+  -f /opt/search-graph/import_search_graph.cypher'
+
+docker compose --profile graph-search up -d --build backend
+```
+
+Use `debug=true` on `/v1/search` to inspect graph availability, candidate count and
+latency. `/v1/search/similar/{listing_id}` also combines vector similarity with shared
+ward, street, geo-cluster and amenity relationships.
+
+## Database migrations
+
+PostgreSQL schema changes are versioned with Alembic. The backend Docker container
+automatically applies pending migrations before starting Gunicorn. For local
+development, migrate before starting the API:
+
+```bash
+cd backend
+alembic upgrade head
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Useful commands:
+
+```bash
+alembic current
+alembic history --verbose
+alembic revision -m "describe schema change"
+alembic downgrade -1
+```
+
+The same operations are available through `make db-upgrade`, `make db-current`,
+`make db-history`, `make db-downgrade`, and
+`make db-revision m="describe schema change"`. Review a downgrade and back up the
+database before running it; downgrading the initial revision removes its tables.
+
+Revisions are written explicitly because the project currently uses SQL queries
+without declarative ORM models. See `backend/migrations/README.md` for details.
+
 ## Architecture
 
 | Service | Port | Technology | Purpose |
 |---------|------|-----------|---------|
 | **Backend** | 8000 | FastAPI + Gunicorn | REST API with property search and AI recommendations |
 | **PostgreSQL** | 5432 | pgvector/pgvector:pg16 | Relational data + vector similarity search |
-| **Neo4j (optional)** | 7474, 7687 | neo4j:5-community | Offline graph inspection only; not used by search serving |
+| **Neo4j (optional)** | 7474, 7687 | neo4j:5-community | Online graph candidates, relationship evidence and similar-listing traversal |
 | **MinIO** | 9000, 9001 | minio/minio | S3-compatible object storage for property images |
 
 ## Getting Started
@@ -100,6 +164,9 @@ uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 CS2307/
 ├── backend/               FastAPI application
 │   ├── Dockerfile
+│   ├── Makefile           Short database migration commands
+│   ├── alembic.ini
+│   ├── migrations/        Versioned PostgreSQL schema changes
 │   ├── requirements.txt
 │   └── src/
 │       ├── main.py

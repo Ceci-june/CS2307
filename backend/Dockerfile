@@ -11,7 +11,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
+RUN chmod +x /app/docker-entrypoint.sh
 
 # multilingual-e5-large is memory-heavy; keep one model copy per container.
 # Scale horizontally with additional containers instead of duplicating it per worker.
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["gunicorn", "src.main:app", "--workers", "1", "--timeout", "300", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

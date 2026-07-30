@@ -27,6 +27,16 @@ def build_evidence(item: dict, parsed: ParsedSearchQuery) -> dict:
             graph_evidence.append(
                 f"{evidence.get('category')} gần nhất cách {float(evidence['driving_distance_km']):.1f} km"
             )
+    neo4j_evidence = item.get("graph_evidence") or {}
+    for evidence in neo4j_evidence.get("amenities") or []:
+        distance = evidence.get("driving_distance_km")
+        if distance is not None:
+            graph_evidence.append(
+                f"Neo4j xác nhận {evidence.get('category')} {evidence.get('name') or ''} "
+                f"cách {float(distance):.1f} km".strip()
+            )
+    for ward in neo4j_evidence.get("wards") or []:
+        graph_evidence.append(f"Neo4j xác nhận thuộc khu vực {ward}")
     semantic = []
     score = item.get("score_breakdown", {}).get("semantic", 0)
     if score > .5:

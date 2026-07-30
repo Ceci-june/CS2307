@@ -34,6 +34,12 @@ APPLICATION = {
     "username_db": config.get("USERNAME_DB"),
     "password_db": config.get("PASSWORD_DB"),
     "database": config.get("DATABASE"),
+    # Optional online graph retrieval
+    "neo4j_uri": config.get("NEO4J_URI", "bolt://neo4j:7687"),
+    "neo4j_user": config.get("NEO4J_USER", "neo4j"),
+    "neo4j_password": config.get("NEO4J_PASSWORD"),
+    "neo4j_database": config.get("NEO4J_DATABASE", "neo4j"),
+    "search_use_neo4j": str(config.get("SEARCH_USE_NEO4J", "false")).lower() in {"1", "true", "yes"},
 }
 
 DATE_FORMAT = '%Y-%m-%d'

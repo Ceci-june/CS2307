@@ -7,13 +7,13 @@ from src.search.schemas import ParsedSearchQuery, RankingProfile
 
 
 WEIGHTS: Dict[RankingProfile, Dict[str, float]] = {
-    RankingProfile.BALANCED: {"semantic": .45, "amenity": .15, "features": .10, "location": .10, "target": .08, "freshness": .07, "quality": .05},
-    RankingProfile.LOCATION_FIRST: {"semantic": .25, "amenity": .30, "features": .08, "location": .20, "target": .07, "freshness": .05, "quality": .05},
-    RankingProfile.AMENITY_FIRST: {"semantic": .25, "amenity": .40, "features": .12, "location": .08, "target": .05, "freshness": .05, "quality": .05},
-    RankingProfile.PRICE_FIRST: {"semantic": .25, "amenity": .10, "features": .08, "location": .08, "target": .30, "freshness": .10, "quality": .09},
-    RankingProfile.SEMANTIC_FIRST: {"semantic": .65, "amenity": .08, "features": .07, "location": .05, "target": .05, "freshness": .05, "quality": .05},
-    RankingProfile.INVESTMENT: {"semantic": .30, "amenity": .10, "features": .05, "location": .20, "target": .15, "freshness": .10, "quality": .10},
-    RankingProfile.FAMILY: {"semantic": .30, "amenity": .22, "features": .15, "location": .13, "target": .08, "freshness": .05, "quality": .07},
+    RankingProfile.BALANCED: {"semantic": .36, "graph": .14, "amenity": .13, "features": .10, "location": .10, "target": .08, "freshness": .05, "quality": .04},
+    RankingProfile.LOCATION_FIRST: {"semantic": .21, "graph": .19, "amenity": .25, "features": .07, "location": .16, "target": .06, "freshness": .03, "quality": .03},
+    RankingProfile.AMENITY_FIRST: {"semantic": .20, "graph": .20, "amenity": .31, "features": .11, "location": .06, "target": .04, "freshness": .04, "quality": .04},
+    RankingProfile.PRICE_FIRST: {"semantic": .21, "graph": .08, "amenity": .08, "features": .07, "location": .07, "target": .30, "freshness": .10, "quality": .09},
+    RankingProfile.SEMANTIC_FIRST: {"semantic": .56, "graph": .10, "amenity": .07, "features": .06, "location": .05, "target": .05, "freshness": .05, "quality": .06},
+    RankingProfile.INVESTMENT: {"semantic": .25, "graph": .13, "amenity": .09, "features": .05, "location": .18, "target": .13, "freshness": .08, "quality": .09},
+    RankingProfile.FAMILY: {"semantic": .25, "graph": .17, "amenity": .18, "features": .13, "location": .11, "target": .07, "freshness": .04, "quality": .05},
 }
 
 
@@ -59,24 +59,37 @@ def quality_score(item: dict) -> float:
 
 
 def _feature_score(item: dict, parsed: ParsedSearchQuery) -> float:
-    features = list(parsed.hard_filters.required_features)
-    features.extend(pref.value for pref in parsed.soft_preferences if pref.type == "feature" and pref.value)
-    if not features:
+    weighted_features = {feature: 1.0 for feature in parsed.hard_filters.required_features}
+    for preference in parsed.soft_preferences:
+        if preference.type == "feature" and preference.value:
+            weighted_features[preference.value] = max(
+                weighted_features.get(preference.value, 0.0), preference.weight
+            )
+    if not weighted_features:
         return .5
-    return sum(bool(item.get(feature)) for feature in set(features)) / len(set(features))
+    total_weight = sum(weighted_features.values())
+    return sum(weight * bool(item.get(feature)) for feature, weight in weighted_features.items()) / total_weight
 
 
 def _amenity_score(item: dict, parsed: ParsedSearchQuery) -> float:
     distances = item.get("amenity_evidence") or []
-    if not distances:
-        return .5 if not parsed.amenity_filters else 0.0
+    if not parsed.amenity_filters:
+        return .5
     scores = []
-    for evidence in distances:
-        threshold = evidence.get("threshold_km") or 3.0
-        distance = evidence.get("driving_distance_km")
-        if distance is not None:
-            scores.append(max(0.0, 1 - float(distance) / max(float(threshold), .1)))
-    return sum(scores) / len(scores) if scores else .5
+    for preference in parsed.amenity_filters:
+        matching = [item for item in distances if item.get("category") == preference.amenity_category]
+        candidate_scores = []
+        for evidence in matching:
+            if preference.max_driving_distance_km is not None and evidence.get("driving_distance_km") is not None:
+                limit = max(float(preference.max_driving_distance_km), .1)
+                candidate_scores.append(max(0.0, 1 - float(evidence["driving_distance_km"]) / limit))
+            elif preference.max_duration_min is not None and evidence.get("driving_duration_min") is not None:
+                limit = max(float(preference.max_duration_min), 1.0)
+                candidate_scores.append(max(0.0, 1 - float(evidence["driving_duration_min"]) / limit))
+            else:
+                candidate_scores.append(1.0)
+        scores.append(max(candidate_scores, default=0.0))
+    return sum(scores) / len(scores) if scores else 0.0
 
 
 def rank_candidates(items: Iterable[dict], parsed: ParsedSearchQuery) -> List[dict]:
@@ -86,6 +99,7 @@ def rank_candidates(items: Iterable[dict], parsed: ParsedSearchQuery) -> List[di
         semantic = max(0.0, min(1.0, float(item.get("semantic_score") or 0.0)))
         text_score = max(0.0, min(1.0, float(item.get("text_score") or 0.0)))
         semantic = max(semantic, text_score * .85)
+        graph = max(0.0, min(1.0, float(item.get("graph_score", 0.5))))
         price_range = parsed.hard_filters.price
         area_range = parsed.hard_filters.area
         price = range_fit(item.get("price_range"), price_range.min, price_range.max, price_range.target)
@@ -96,7 +110,7 @@ def rank_candidates(items: Iterable[dict], parsed: ParsedSearchQuery) -> List[di
         location = 1.0 if (parsed.hard_filters.districts or parsed.hard_filters.former_admin_areas) else .5
         freshness = freshness_score(item.get("posted_date") or item.get("created_at"))
         quality = quality_score(item)
-        breakdown = {"semantic": semantic, "amenity": amenity, "features": features, "location": location, "target": target, "freshness": freshness, "quality": quality}
+        breakdown = {"semantic": semantic, "graph": graph, "amenity": amenity, "features": features, "location": location, "target": target, "freshness": freshness, "quality": quality}
         final = sum(weights[key] * breakdown[key] for key in weights)
         enriched = dict(item)
         enriched["score_breakdown"] = {key: round(value, 4) for key, value in breakdown.items()}
