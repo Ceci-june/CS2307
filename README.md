@@ -115,13 +115,13 @@ without declarative ORM models. See `backend/migrations/README.md` for details.
 
 - Docker and Docker Compose
 - Python 3.9+ (only for local backend development)
-- A Google Gemini API key (for AI search features)
+- A Gemini key or an OpenAI-compatible endpoint (for AI search features)
 
 ### Option 1: Docker Compose (all services)
 
 ```bash
 cp .env.example .env
-# Edit .env — set your passwords and GEMINI_API_KEYS
+# Edit .env — set your passwords and LLM provider credentials
 
 docker compose up -d
 docker compose ps        # all services should be running
@@ -188,9 +188,28 @@ Copy `.env.example` to `.env`. Key variables:
 | Variable | Description |
 |----------|-------------|
 | `POSTGRES_PASSWORD` | PostgreSQL password |
-| `GEMINI_API_KEYS` | Google Gemini API key(s), comma-separated |
+| `BACKEND_LLM_PROVIDER` | `gemini`, `openai`, `openai-compatible`, `groq`, or `grok` |
+| `BACKEND_LLM_MODEL` | Model name sent to the selected provider |
+| `BACKEND_LLM_BASE_URL` | Base URL for a custom OpenAI-compatible endpoint |
+| `BACKEND_LLM_API_KEY` | API key for an OpenAI-compatible endpoint |
+| `GEMINI_API_KEYS` | Gemini API key(s), comma-separated (Gemini only) |
 | `HOST_DB` | `postgres` (Docker) or `localhost` (local dev) |
 | `MINIO_END_POINT` | `minio:9000` (Docker) or `localhost:9000` (local dev) |
 | `NEO4J_AUTH` | Format: `neo4j/<password>` |
+
+To switch the backend to an OpenAI-compatible server, only the provider settings
+need to change; application code and API routes stay the same:
+
+```dotenv
+BACKEND_LLM_PROVIDER=openai-compatible
+BACKEND_LLM_MODEL=qwen2.5:14b
+BACKEND_LLM_BASE_URL=http://host.docker.internal:11434/v1
+BACKEND_LLM_API_KEY=
+```
+
+For OpenAI, Groq, and Grok, `BACKEND_LLM_BASE_URL` is optional because the
+backend includes their standard API URLs. Set the matching model and key, for
+example `BACKEND_LLM_PROVIDER=openai`, `BACKEND_LLM_MODEL=gpt-4o-mini`, and
+`BACKEND_LLM_API_KEY=...`.
 
 See `.env.example` for the full list.

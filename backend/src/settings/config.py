@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from dotenv import dotenv_values, find_dotenv
 from loguru import logger
@@ -6,6 +7,11 @@ from loguru import logger
 from src.settings.logging_config import InterceptHandler
 # load config from .env file
 config = dotenv_values(find_dotenv())
+
+
+def config_value(name, default=None):
+    """Prefer process environment (Docker/CI), then values from the local .env."""
+    return os.getenv(name, config.get(name, default))
 
 DEBUG = bool(config.get("DEBUG", "False") if config.get(
     "DEBUG", "") in ["True", "true", "1"] else False)
@@ -27,7 +33,17 @@ APPLICATION = {
     "minio_secret_access_key": config.get("MINIO_SECRET_ACCESS_KEY"),
     "minio_bucket_name": config.get("MINIO_BUCKET_NAME"),
     "minio_secure": config.get("MINIO_SECURE"),
-    "gemini_api_keys": config.get("GEMINI_API_KEYS"),
+    "gemini_api_keys": config_value("GEMINI_API_KEYS"),
+    # LLM (Gemini or any Chat Completions compatible endpoint)
+    "llm_provider": config_value("BACKEND_LLM_PROVIDER", "gemini"),
+    "llm_model": config_value("BACKEND_LLM_MODEL"),
+    "llm_base_url": config_value("BACKEND_LLM_BASE_URL"),
+    "llm_api_key": (
+        config_value("BACKEND_LLM_API_KEY")
+        or config_value("OPENAI_API_KEY")
+        or config_value("GROQ_API_KEY")
+        or config_value("XAI_API_KEY")
+    ),
     # Postgres
     "host_db": config.get("HOST_DB"),
     "port_db": config.get("PORT_DB"),

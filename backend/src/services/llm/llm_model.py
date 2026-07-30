@@ -1,42 +1,69 @@
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 import random
-import io
+
 import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google.generativeai.types import HarmBlockThreshold, HarmCategory
 from loguru import logger
-import random
+from openai import AsyncOpenAI
 
-from src.settings.config import APPLICATION
 from src.services.llm.const.list_models import GEMINI_MODELS
+from src.settings.config import APPLICATION
 
-API_KEYS = APPLICATION.get("gemini_api_keys", "")
+
+OPENAI_COMPATIBLE_DEFAULTS = {
+    "openai": ("https://api.openai.com/v1", "gpt-4o-mini"),
+    "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    "grok": ("https://api.x.ai/v1", "grok-3-mini"),
+}
+OPENAI_COMPATIBLE_PROVIDERS = {
+    "openai",
+    "openai-compatible",
+    "openai_compatible",
+    "compatible",
+    "groq",
+    "grok",
+}
 
 
 class LLModel:
-    """A class to handle interactions with Google's Gemini AI model.
-
-    This class provides methods to interact with Google's Gemini AI models,
-    handling configuration, safety settings, and error retries.
-    """
+    """Provider-agnostic LLM client for Gemini and OpenAI-compatible APIs."""
 
     def __init__(
-            self,
-            model_name: str = GEMINI_MODELS["GEMINI_2_5_FLASH"],
-            temperature: float = 0.5,
-            top_p: float = 1.0,
-            top_k: int = 30,
-            max_output_tokens: int = 1024 * 20
+        self,
+        model_name: Optional[str] = None,
+        temperature: float = 0.5,
+        top_p: float = 1.0,
+        top_k: int = 30,
+        max_output_tokens: int = 1024 * 20,
+        provider: Optional[str] = None,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
     ) -> None:
-        """Initialize the GeminiModel with configuration parameters.
-
-        Args:
-            model_name: The name of the Gemini model to use.
-            temperature: Controls randomness in the response (0.0 to 1.0).
-            top_p: Controls diversity via nucleus sampling (0.0 to 1.0).
-            top_k: Controls diversity via top-k sampling (1 to 40).
-            max_output_tokens: Maximum number of tokens in the response.
-        """
-        self.model_name = model_name
+        self.provider = (
+            provider or APPLICATION.get("llm_provider") or "gemini"
+        ).strip().lower()
+        default_base_url, default_model = OPENAI_COMPATIBLE_DEFAULTS.get(
+            self.provider, (None, None)
+        )
+        self.base_url = base_url or APPLICATION.get("llm_base_url") or default_base_url
+        self.model_name = (
+            model_name
+            or APPLICATION.get("llm_model")
+            or default_model
+            or GEMINI_MODELS["GEMINI_2_5_FLASH"]
+        )
+        configured_key = api_key or APPLICATION.get("llm_api_key") or ""
+        self.api_keys = [key.strip() for key in configured_key.split(",") if key.strip()]
+        configured_gemini_keys = (
+            api_key
+            if self.provider == "gemini" and api_key
+            else APPLICATION.get("gemini_api_keys")
+        ) or ""
+        self.gemini_api_keys = [
+            key.strip()
+            for key in configured_gemini_keys.split(",")
+            if key.strip()
+        ]
         self.generation_config = {
             "temperature": temperature,
             "top_p": top_p,
@@ -49,89 +76,129 @@ class LLModel:
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
         }
-    
-    def start(self):
-        try:
-            self.api_keys = [key.strip() for key in API_KEYS.split(",") if key.strip()]
-        except Exception as e:
-            logger.error(f"Error starting GeminiModel: {str(e)}")
-            raise
-    
+        self._openai_clients = []
+
+    def start(self) -> None:
+        if self.provider == "gemini":
+            if not self.gemini_api_keys:
+                logger.warning("LLM provider Gemini is configured but GEMINI_API_KEYS is empty")
+            return
+
+        if self.provider not in OPENAI_COMPATIBLE_PROVIDERS:
+            raise ValueError(
+                f"Unsupported BACKEND_LLM_PROVIDER={self.provider!r}. "
+                "Use gemini, openai, openai-compatible, groq, or grok."
+            )
+        if not self.base_url:
+            raise ValueError(
+                "BACKEND_LLM_BASE_URL is required for an OpenAI-compatible provider"
+            )
+        if not self.api_keys:
+            logger.warning(
+                "BACKEND_LLM_API_KEY is empty; using a placeholder key for a local "
+                "OpenAI-compatible endpoint"
+            )
+            self.api_keys = ["not-needed"]
+        self._openai_clients = [
+            AsyncOpenAI(api_key=key, base_url=self.base_url) for key in self.api_keys
+        ]
+        logger.info(
+            "LLM ready: provider={} model={} base_url={}",
+            self.provider,
+            self.model_name,
+            self.base_url,
+        )
+
+    async def stop(self) -> None:
+        for client in self._openai_clients:
+            await client.close()
+        self._openai_clients = []
+
     async def ask_llm(
         self,
         system_prompt: str,
         user_prompt: str,
-        model: str = GEMINI_MODELS["GEMINI_2_5_FLASH"],
+        model: Optional[str] = None,
         retries: int = 3,
-        timeout_seconds: int = 60 * 10
+        timeout_seconds: int = 60 * 10,
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
-        return await self._ask_gemini(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            model=model,
-            retries=retries,
-            timeout_seconds=timeout_seconds
+        selected_model = model or self.model_name
+        if self.provider == "gemini":
+            return await self._ask_gemini(
+                system_prompt, user_prompt, selected_model, retries, timeout_seconds
+            )
+        return await self._ask_openai_compatible(
+            system_prompt, user_prompt, selected_model, retries, timeout_seconds
         )
 
     async def _ask_gemini(
         self,
         system_prompt: str,
         user_prompt: str,
-        model: str = GEMINI_MODELS["GEMINI_2_5_FLASH"],
-        retries: int = 3,
-        timeout_seconds: int = 60 * 10
+        model: str,
+        retries: int,
+        timeout_seconds: int,
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
-        """Ask a question to the Gemini model and get a response.
-
-        Args:
-            system_prompt: The system prompt to set the context.
-            user_prompt: The user's question or prompt.
-            model_llm: The specific Gemini model to use.
-            retries: Number of retry attempts if the request fails.
-            timeout_seconds: Timeout for the request in seconds.
-
-        Returns:
-            A tuple containing:
-            - success status (bool)
-            - response text (str) or None if failed
-            - exception (Exception) or None if successful
-        """
-        try:
-            api_key = random.choice(self.api_keys)
-            genai.configure(api_key=api_key)
-
-            model = genai.GenerativeModel(
-                model_name=model,
-                generation_config=self.generation_config,
-                system_instruction=system_prompt,
-                safety_settings=self.safety_settings,
-            )
-
+        last_error: Optional[Exception] = None
+        for attempt in range(1, retries + 1):
             try:
-                message = [{'role': 'user', 'parts': [user_prompt]}]
-                response = await model.generate_content_async(
-                    message,
-                    request_options={'timeout': timeout_seconds}
+                api_key = random.choice(self.gemini_api_keys)
+                genai.configure(api_key=api_key)
+                gemini_model = genai.GenerativeModel(
+                    model_name=model,
+                    generation_config=self.generation_config,
+                    system_instruction=system_prompt,
+                    safety_settings=self.safety_settings,
+                )
+                response = await gemini_model.generate_content_async(
+                    [{"role": "user", "parts": [user_prompt]}],
+                    request_options={"timeout": timeout_seconds},
                 )
                 return True, response.parts[0].text, None
-
-            except Exception as e:
-                logger.error(f"Error generating content with Gemini: {str(e)}")
-                raise
-
-        except Exception as e:
-            retries -= 1
-            if retries > 0:
+            except Exception as exc:
+                last_error = exc
                 logger.warning(
-                    f"Retrying Gemini request ({4 - retries}/3). Error: {e}")
-                return await self._ask_gemini(
-                    system_prompt=system_prompt,
-                    user_prompt=user_prompt,
-                    model=model,
-                    retries=retries,
-                    timeout_seconds=timeout_seconds
+                    "Gemini request failed ({}/{}): {}", attempt, retries, exc
                 )
-            else:
-                logger.error(
-                    f"Failed to get response from Gemini after all retries: {e}")
-                return False, None, e
+        logger.error("Gemini request failed after {} attempts: {}", retries, last_error)
+        return False, None, last_error
+
+    async def _ask_openai_compatible(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model: str,
+        retries: int,
+        timeout_seconds: int,
+    ) -> Tuple[bool, Optional[str], Optional[Exception]]:
+        if not self._openai_clients:
+            self.start()
+
+        last_error: Optional[Exception] = None
+        for attempt in range(1, retries + 1):
+            try:
+                client = random.choice(self._openai_clients)
+                response = await client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=self.generation_config["temperature"],
+                    top_p=self.generation_config["top_p"],
+                    max_tokens=self.generation_config["max_output_tokens"],
+                    timeout=timeout_seconds,
+                )
+                content = response.choices[0].message.content
+                if content is None:
+                    raise ValueError("OpenAI-compatible endpoint returned empty content")
+                return True, content, None
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "OpenAI-compatible request failed ({}/{}): {}", attempt, retries, exc
+                )
+        logger.error(
+            "OpenAI-compatible request failed after {} attempts: {}", retries, last_error
+        )
+        return False, None, last_error

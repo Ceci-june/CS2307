@@ -50,6 +50,7 @@ def create_stop_app_handler(app: FastAPI) -> Callable:  # noqa
     async def stop_app() -> None:
         from src.search.graph_repository import graph_repository
         graph_repository.stop()
+        await llm_model.stop()
         minio_client.stop()
         postgres_client.stop()
     return stop_app
