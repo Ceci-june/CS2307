@@ -43,3 +43,4 @@ gen_user_data/work_log.html
 *.sqlite
 gen_user_data/data/graph/
 gen_user_data/data/precomputed/
+gen_user_data/scratchpad/

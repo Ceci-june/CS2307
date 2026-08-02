@@ -13,8 +13,10 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
-OUT_DIR = ("/private/tmp/claude-501/-Users-vy-Desktop-School-Tri-thuc---v2-CS2307/"
-           "44bfdff9-f7ac-4b85-8281-f5abaa0487ef/scratchpad/rerank")
+# Override with RERANK_DIR env var if you want the batch/out files elsewhere
+# (e.g. a Claude Code scratchpad); defaults to a repo-local, gitignored folder
+# so the workflow runs the same on any machine after `git pull`.
+OUT_DIR = os.environ.get("RERANK_DIR", os.path.join(HERE, "scratchpad", "rerank"))
 BATCH = 30
 
 
