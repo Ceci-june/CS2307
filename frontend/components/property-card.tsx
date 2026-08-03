@@ -1,14 +1,17 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Heart, MapPin, Camera, Bed, Bath } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { sendInteraction } from "@/lib/feedback"
 
 interface PropertyCardProps {
   property: {
     id: string
+    listing_id?: number | string
     title: string
     price_range: string
     area: number | null
@@ -48,10 +51,23 @@ const formatDate = (dateString: string) => {
 export function PropertyCard({ property }: PropertyCardProps) {
   const imageUrl = property.images?.[0] || DEFAULT_IMAGE
   const badgeStyle = getBadgeStyle(property.listing_type)
+  const [saved, setSaved] = useState(false)
+
+  const listingId = property.listing_id ?? property.id
 
   const handleCardClick = () => {
     // Save full property data to sessionStorage
     sessionStorage.setItem('selectedProperty', JSON.stringify(property))
+  }
+
+  const handleSave = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const next = !saved
+    setSaved(next)
+    if (next) {
+      sendInteraction({ listing_id: listingId, action_type: "save", source: "search_bar" })
+    }
   }
 
   return (
@@ -96,8 +112,13 @@ export function PropertyCard({ property }: PropertyCardProps) {
               <h3 className="font-semibold text-foreground line-clamp-2 flex-1">
                 {property.title}
               </h3>
-              <button className="p-1.5 hover:bg-muted rounded-full transition-colors flex-shrink-0" onClick={(e) => e.preventDefault()}>
-                <Heart className="h-5 w-5 text-muted-foreground" />
+              <button
+                type="button"
+                aria-label="Lưu tin"
+                className="p-1.5 hover:bg-muted rounded-full transition-colors flex-shrink-0"
+                onClick={handleSave}
+              >
+                <Heart className={`h-5 w-5 ${saved ? "fill-[#E03C31] text-[#E03C31]" : "text-muted-foreground"}`} />
               </button>
             </div>
 

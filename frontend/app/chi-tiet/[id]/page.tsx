@@ -16,9 +16,11 @@ import { ContactForm } from '@/components/property-detail/contact-form'
 import { SimilarProperties } from '@/components/property-detail/similar-properties'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { sendInteraction } from '@/lib/feedback'
 
 interface PropertyData {
   id: string
+  listing_id?: number | string
   title: string
   price_range: string
   area: number | null
@@ -82,6 +84,23 @@ export default function PropertyDetailPage() {
     
     setIsLoading(false)
   }, [])
+
+  // Record a `view` on open and the accumulated dwell time on leave.
+  useEffect(() => {
+    if (!property) return
+    const listingId = property.listing_id ?? property.id
+    const openedAt = Date.now()
+    sendInteraction({ listing_id: listingId, action_type: "view", source: "detail" })
+    return () => {
+      const dwell = (Date.now() - openedAt) / 1000
+      sendInteraction({
+        listing_id: listingId,
+        action_type: "view",
+        source: "detail",
+        dwell_time_seconds: dwell,
+      })
+    }
+  }, [property])
 
   if (isLoading) {
     return (
@@ -172,7 +191,7 @@ export default function PropertyDetailPage() {
                   <SellerCard />
 
                   {/* Contact Form */}
-                  <ContactForm />
+                  <ContactForm listingId={property.listing_id ?? property.id} />
                 </div>
               </div>
             </div>

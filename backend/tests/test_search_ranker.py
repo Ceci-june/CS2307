@@ -22,6 +22,28 @@ class RankerTests(unittest.TestCase):
         self.assertEqual(len([x for x in result if x["geo_cluster_150m"] == "same"]), 3)
         self.assertIn(99, [x["listing_id"] for x in result])
 
+    def test_no_profile_leaves_ranking_unchanged(self):
+        parsed = RuleBasedQueryParser().parse("Căn hộ khoảng 5 tỷ")
+        items = [{"listing_id": 1, "price_range": 5, "area": 70, "semantic_score": .9, "district": "Q7"}]
+        without = rank_candidates(items, parsed)
+        with_none = rank_candidates(items, parsed, None)
+        self.assertEqual(without[0]["final_score"], with_none[0]["final_score"])
+        self.assertNotIn("personalization", without[0]["score_breakdown"])
+
+    def test_profile_adds_personalization_term_and_can_reorder(self):
+        parsed = RuleBasedQueryParser().parse("Căn hộ khoảng 5 tỷ")
+        items = [
+            {"listing_id": 1, "price_range": 5, "area": 70, "semantic_score": .55, "district": "Q1"},
+            {"listing_id": 2, "price_range": 5, "area": 70, "semantic_score": .50, "district": "Q7"},
+        ]
+        # Without a profile, listing 1 (higher semantic) ranks first.
+        self.assertEqual(rank_candidates(items, parsed)[0]["listing_id"], 1)
+        # A strong preference for Q7 promotes listing 2 and records the term.
+        profile = {"districts": {"Q7": 1.0}, "property_types": {}, "price_center": None, "saved_listing_ids": set()}
+        ranked = rank_candidates(items, parsed, profile)
+        self.assertIn("personalization", ranked[0]["score_breakdown"])
+        self.assertEqual(ranked[0]["listing_id"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

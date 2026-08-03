@@ -1,12 +1,14 @@
 "use client"
 
-import { Home, Upload } from "lucide-react"
+import { Home, Upload, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
 
 export function Header() {
   const pathname = usePathname()
+  const { user, logout, loading } = useAuth()
 
   const isActive = (href: string) => {
     return pathname === href
@@ -46,12 +48,30 @@ export function Header() {
 
         {/* Auth Buttons */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" className="text-sm font-medium text-foreground">
-            Đăng nhập
-          </Button>
-          <Button variant="outline" className="text-sm font-medium text-[#E03C31] border-[#E03C31] hover:bg-[#E03C31]/10">
-            Đăng ký
-          </Button>
+          {loading ? null : user ? (
+            <>
+              <span className="text-sm font-medium text-foreground">
+                Xin chào, {user.display_name || user.username}
+              </span>
+              <Button
+                variant="ghost"
+                className="text-sm font-medium text-foreground"
+                onClick={logout}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Đăng xuất
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" className="text-sm font-medium text-foreground">
+                <Link href="/dang-nhap">Đăng nhập</Link>
+              </Button>
+              <Button asChild variant="outline" className="text-sm font-medium text-[#E03C31] border-[#E03C31] hover:bg-[#E03C31]/10">
+                <Link href="/dang-ky">Đăng ký</Link>
+              </Button>
+            </>
+          )}
           <Button className="bg-[#E03C31] hover:bg-[#c43428] text-white text-sm font-medium">
             <Upload className="h-4 w-4 mr-2" />
             Đăng tin

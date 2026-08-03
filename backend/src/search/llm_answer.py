@@ -80,6 +80,7 @@ class LLMSearchAnswerGenerator:
         query: str,
         parsed_query: dict[str, Any],
         results: list[dict[str, Any]],
+        history: list[dict[str, Any]] | None = None,
     ) -> tuple[str | None, bool]:
         if not self.enabled() or not results:
             return None, False
@@ -97,6 +98,7 @@ class LLMSearchAnswerGenerator:
         ok, raw, error = await self.llm_model.ask_llm(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=user_prompt,
+            history=history,
         )
         if not ok or not raw:
             logger.warning("LLM search answer unavailable: {}", error)
