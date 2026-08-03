@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 from typing import Any, Dict
 
+from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
 from src.search.embedding import embedding_model
@@ -27,7 +29,13 @@ class HybridSearchService:
         deterministic = self.rule_parser.parse(query, top_k=top_k, explicit_filters=filters)
         return await self.llm_parser.parse(query, deterministic)
 
-    async def search(self, request: SearchRequest, generate_llm_answer: bool = True) -> dict:
+    async def search(
+        self,
+        request: SearchRequest,
+        generate_llm_answer: bool = True,
+        history: list[dict] | None = None,
+        user_id: int | None = None,
+    ) -> dict:
         started = time.perf_counter()
         parsed = await self.parse(request.query, request.top_k, request.filters)
         embedded_count, property_count = await run_in_threadpool(search_repository.embedding_coverage)
@@ -99,7 +107,12 @@ class HybridSearchService:
                     relaxations = changes
                     break
 
-        ranked = rank_candidates(candidates, applied)
+        user_profile = None
+        if user_id is not None:
+            from src.search.personalization import build_user_profile
+
+            user_profile = await run_in_threadpool(build_user_profile, user_id)
+        ranked = rank_candidates(candidates, applied, user_profile)
         start = (request.page - 1) * request.top_k
         selected = diversify(ranked, start + request.top_k)[start:start + request.top_k]
         results = [attach_explanation(item, applied) for item in selected]
@@ -109,6 +122,13 @@ class HybridSearchService:
                 request.query,
                 parsed.model_dump(mode="json"),
                 results,
+                history=history,
+            )
+        # Log impressions for authenticated users only, so the anonymous /v1/search
+        # path is unchanged. Best-effort: never let logging break a search response.
+        if user_id is not None and results:
+            await run_in_threadpool(
+                self._log_impressions, request, results, user_id
             )
         response = {
             "query": request.query,
@@ -143,6 +163,38 @@ class HybridSearchService:
                 },
             }
         return response
+
+    @staticmethod
+    def _log_impressions(request: SearchRequest, results: list, user_id: int) -> None:
+        """Persist one recommendation_events row per shown listing (best-effort)."""
+        try:
+            from src.services.feedback import repository as feedback_repository
+
+            result_set_id = uuid.uuid4().hex
+            rows = []
+            for rank, item in enumerate(results, start=1):
+                listing_id = item.get("listing_id")
+                if listing_id is None:
+                    continue
+                chosen = bool(item.get("explanation"))
+                rows.append(
+                    {
+                        "result_set_id": result_set_id,
+                        "user_id": user_id,
+                        "session_id": None,
+                        "conversation_id": None,
+                        "raw_query": request.query,
+                        "algorithm_version": "hybrid_v1",
+                        "listing_id": int(listing_id),
+                        "retrieval_rank": rank,
+                        "score": float(item.get("final_score") or 0.0),
+                        "llm_chosen": chosen,
+                        "llm_rank": rank if chosen else None,
+                    }
+                )
+            feedback_repository.insert_recommendation_events(rows)
+        except Exception as exc:  # noqa: BLE001 - impressions are non-critical
+            logger.warning("Impression logging failed: {}", exc)
 
     async def similar(self, listing_id: str, top_k: int = 10) -> dict:
         embedded_count, property_count = await run_in_threadpool(search_repository.embedding_coverage)

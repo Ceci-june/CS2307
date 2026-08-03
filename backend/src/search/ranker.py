@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
+from src.search.personalization import score_item as personalization_score
 from src.search.schemas import ParsedSearchQuery, RankingProfile
+
+
+# How much a user's feedback profile can shift a listing's score. Kept modest so
+# personalization nudges rather than overrides the deterministic ranking.
+PERSONALIZATION_WEIGHT = 0.15
 
 
 WEIGHTS: Dict[RankingProfile, Dict[str, float]] = {
@@ -92,7 +98,11 @@ def _amenity_score(item: dict, parsed: ParsedSearchQuery) -> float:
     return sum(scores) / len(scores) if scores else 0.0
 
 
-def rank_candidates(items: Iterable[dict], parsed: ParsedSearchQuery) -> List[dict]:
+def rank_candidates(
+    items: Iterable[dict],
+    parsed: ParsedSearchQuery,
+    user_profile: Optional[Dict[str, Any]] = None,
+) -> List[dict]:
     weights = WEIGHTS[parsed.ranking_profile]
     results = []
     for item in items:
@@ -113,6 +123,12 @@ def rank_candidates(items: Iterable[dict], parsed: ParsedSearchQuery) -> List[di
         breakdown = {"semantic": semantic, "graph": graph, "amenity": amenity, "features": features, "location": location, "target": target, "freshness": freshness, "quality": quality}
         final = sum(weights[key] * breakdown[key] for key in weights)
         enriched = dict(item)
+        # Blend in a personalization term only when a user profile exists, so the
+        # anonymous ranking is identical to before.
+        if user_profile is not None:
+            personalization = personalization_score(item, user_profile)
+            breakdown["personalization"] = personalization
+            final = (1 - PERSONALIZATION_WEIGHT) * final + PERSONALIZATION_WEIGHT * personalization
         enriched["score_breakdown"] = {key: round(value, 4) for key, value in breakdown.items()}
         enriched["final_score"] = round(final, 4)
         results.append(enriched)

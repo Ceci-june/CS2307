@@ -50,5 +50,27 @@ class PostgresConnector:
         with self.engine.begin() as connection:
             return connection.execute(query, kwargs)
 
+    def fetch_write(self, raw_query: str, **kwargs):
+        """Execute a write inside a transaction and return any produced rows.
+
+        Use for parameterized ``INSERT ... RETURNING``/``UPDATE ... RETURNING``
+        statements where the caller needs the committed row back.
+        """
+        query = text(raw_query)
+        with self.engine.begin() as connection:
+            result = connection.execute(query, kwargs)
+            if not result.returns_rows:
+                return []
+            return [dict(row) for row in result.mappings().all()]
+
+    def execute_write_many(self, raw_query: str, rows: list):
+        """Execute one parameterized write per row inside a single transaction."""
+        if not rows:
+            return 0
+        query = text(raw_query)
+        with self.engine.begin() as connection:
+            connection.execute(query, rows)
+        return len(rows)
+
     def stop(self):
         self.engine.dispose()

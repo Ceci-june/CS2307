@@ -6,9 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { sendInteraction } from '@/lib/feedback'
 
-export function ContactForm() {
+interface ContactFormProps {
+  listingId?: number | string
+}
+
+export function ContactForm({ listingId }: ContactFormProps) {
   const [formData, setFormData] = useState({ name: '', phone: '' })
+  const [saved, setSaved] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -17,8 +23,25 @@ export function ContactForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Form submitted:', formData)
-    // TODO: Implement API call
+    if (listingId != null) {
+      sendInteraction({ listing_id: listingId, action_type: 'contact', source: 'detail' })
+    }
+  }
+
+  const handleSave = () => {
+    setSaved(true)
+    if (listingId != null) {
+      sendInteraction({ listing_id: listingId, action_type: 'save', source: 'detail' })
+    }
+  }
+
+  const handleShare = () => {
+    if (listingId != null) {
+      sendInteraction({ listing_id: listingId, action_type: 'share', source: 'detail' })
+    }
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({ url: window.location.href }).catch(() => {})
+    }
   }
 
   return (
@@ -64,11 +87,11 @@ export function ContactForm() {
 
       {/* Quick CTAs */}
       <div className="flex gap-2">
-        <Button variant="outline" className="flex-1 text-sm">
-          <Heart className="h-4 w-4 mr-1.5" />
+        <Button type="button" variant="outline" className="flex-1 text-sm" onClick={handleSave}>
+          <Heart className={`h-4 w-4 mr-1.5 ${saved ? 'fill-[#E03C31] text-[#E03C31]' : ''}`} />
           Yêu thích
         </Button>
-        <Button variant="outline" className="flex-1 text-sm">
+        <Button type="button" variant="outline" className="flex-1 text-sm" onClick={handleShare}>
           <Share2 className="h-4 w-4 mr-1.5" />
           Chia sẻ
         </Button>

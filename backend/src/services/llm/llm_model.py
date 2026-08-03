@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 import random
 
 import google.generativeai as genai
@@ -121,14 +121,21 @@ class LLModel:
         model: Optional[str] = None,
         retries: int = 3,
         timeout_seconds: int = 60 * 10,
+        history: Optional[List[dict]] = None,
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
+        """Ask the LLM a single turn, optionally with prior conversation ``history``.
+
+        ``history`` is an ordered list of ``{"role": "user"|"assistant", "content": str}``
+        turns that precede ``user_prompt``. Passing ``None`` reproduces the original
+        single-shot behavior exactly.
+        """
         selected_model = model or self.model_name
         if self.provider == "gemini":
             return await self._ask_gemini(
-                system_prompt, user_prompt, selected_model, retries, timeout_seconds
+                system_prompt, user_prompt, selected_model, retries, timeout_seconds, history
             )
         return await self._ask_openai_compatible(
-            system_prompt, user_prompt, selected_model, retries, timeout_seconds
+            system_prompt, user_prompt, selected_model, retries, timeout_seconds, history
         )
 
     async def _ask_gemini(
@@ -138,8 +145,14 @@ class LLModel:
         model: str,
         retries: int,
         timeout_seconds: int,
+        history: Optional[List[dict]] = None,
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
         last_error: Optional[Exception] = None
+        contents = []
+        for turn in history or []:
+            role = "model" if turn.get("role") == "assistant" else "user"
+            contents.append({"role": role, "parts": [str(turn.get("content") or "")]})
+        contents.append({"role": "user", "parts": [user_prompt]})
         for attempt in range(1, retries + 1):
             try:
                 api_key = random.choice(self.gemini_api_keys)
@@ -151,7 +164,7 @@ class LLModel:
                     safety_settings=self.safety_settings,
                 )
                 response = await gemini_model.generate_content_async(
-                    [{"role": "user", "parts": [user_prompt]}],
+                    contents,
                     request_options={"timeout": timeout_seconds},
                 )
                 return True, response.parts[0].text, None
@@ -170,9 +183,16 @@ class LLModel:
         model: str,
         retries: int,
         timeout_seconds: int,
+        history: Optional[List[dict]] = None,
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
         if not self._openai_clients:
             self.start()
+
+        messages = [{"role": "system", "content": system_prompt}]
+        for turn in history or []:
+            role = "assistant" if turn.get("role") == "assistant" else "user"
+            messages.append({"role": role, "content": str(turn.get("content") or "")})
+        messages.append({"role": "user", "content": user_prompt})
 
         last_error: Optional[Exception] = None
         for attempt in range(1, retries + 1):
@@ -180,10 +200,7 @@ class LLModel:
                 client = random.choice(self._openai_clients)
                 response = await client.chat.completions.create(
                     model=model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
+                    messages=messages,
                     temperature=self.generation_config["temperature"],
                     top_p=self.generation_config["top_p"],
                     max_tokens=self.generation_config["max_output_tokens"],
