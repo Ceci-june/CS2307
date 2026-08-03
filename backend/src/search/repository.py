@@ -86,7 +86,8 @@ class SearchRepository:
                 params[f"{key}_max"] = value.max
 
         list_filters = (
-            ("property_type", hard.property_types), ("district", hard.districts),
+            ("property_type", hard.property_types),
+            ("district", [] if graph_validated else hard.districts),
             ("legal_status", hard.legal_statuses),
             ("furnishing", hard.furnishings), ("house_direction", hard.house_directions),
             ("balcony_direction", hard.balcony_directions),
@@ -96,7 +97,7 @@ class SearchRepository:
                 key = f"{column}_values"
                 where.append(f"LOWER(p.{column}) = ANY(:{key})")
                 params[key] = [value.lower() for value in values]
-        if hard.former_admin_areas:
+        if hard.former_admin_areas and not graph_validated:
             where.append("LOWER(p.former_admin_area) = ANY(:former_admin_area_values)")
             params["former_admin_area_values"] = [value.lower() for value in hard.former_admin_areas]
         if hard.excluded_property_types:

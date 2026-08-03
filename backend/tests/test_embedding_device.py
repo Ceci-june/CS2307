@@ -95,6 +95,27 @@ class EmbeddingDeviceTests(unittest.TestCase):
             model = E5EmbeddingModel()
             self.assertIsNone(model.encode_query("test"))
 
+    @patch("src.search.embedding.requests.post")
+    def test_lmstudio_can_request_schema_dimension(self, post):
+        from src.search.embedding import E5EmbeddingModel
+
+        response = Mock()
+        response.json.return_value = {"data": [{"index": 0, "embedding": [1.0] * 1024}]}
+        post.return_value = response
+        with patch.dict(
+            os.environ,
+            {
+                "SEARCH_EMBEDDING_PROVIDER": "lmstudio",
+                "SEARCH_EMBEDDING_REQUEST_DIMENSIONS": "1024",
+            },
+            clear=True,
+        ):
+            model = E5EmbeddingModel()
+            vectors = model.encode_query("test")
+
+        self.assertEqual(vectors.shape, (1024,))
+        self.assertEqual(post.call_args.kwargs["json"]["dimensions"], 1024)
+
 
 if __name__ == "__main__":
     unittest.main()

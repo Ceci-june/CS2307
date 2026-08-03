@@ -27,6 +27,14 @@ class E5EmbeddingModel:
         self._device = self._resolve_device(self.requested_device)
         self.base_url = os.getenv("SEARCH_EMBEDDING_BASE_URL", "http://127.0.0.1:1234/v1").rstrip("/")
         self.api_key = os.getenv("SEARCH_EMBEDDING_API_KEY", "").strip()
+        requested_dimensions = os.getenv("SEARCH_EMBEDDING_REQUEST_DIMENSIONS", "").strip()
+        try:
+            self.request_dimensions = int(requested_dimensions) if requested_dimensions else None
+            if self.request_dimensions is not None and self.request_dimensions <= 0:
+                raise ValueError
+        except ValueError:
+            logger.warning("Invalid SEARCH_EMBEDDING_REQUEST_DIMENSIONS; omitting it from the request")
+            self.request_dimensions = None
         try:
             self.request_timeout = float(os.getenv("SEARCH_EMBEDDING_TIMEOUT", "60"))
         except ValueError:
@@ -147,11 +155,14 @@ class E5EmbeddingModel:
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
+        payload = {"model": self.model_name, "input": texts}
+        if self.request_dimensions is not None:
+            payload["dimensions"] = self.request_dimensions
         try:
             response = requests.post(
                 endpoint,
                 headers=headers,
-                json={"model": self.model_name, "input": texts},
+                json=payload,
                 timeout=self.request_timeout,
             )
             response.raise_for_status()

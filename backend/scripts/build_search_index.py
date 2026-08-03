@@ -224,7 +224,7 @@ def main():
         if not args.skip_catalog_import:
             import_properties(DATA_DIR / "Final_Data.csv")
         if not args.skip_graph_metadata:
-            import_graph_metadata(DATA_DIR / "real_estate_graph_ready")
+            import_graph_metadata(DATA_DIR / "real_estate_graph_ready_v2_address_mapping")
         backfill(args.batch_size, args.skip_embeddings, args.force)
     finally:
         postgres_client.stop()

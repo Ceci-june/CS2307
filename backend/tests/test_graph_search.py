@@ -3,6 +3,7 @@ import unittest
 from src.search.graph_repository import Neo4jGraphRepository
 from src.search.query_parser import RuleBasedQueryParser
 from src.search.ranker import WEIGHTS, rank_candidates
+from src.search.repository import SearchRepository
 
 
 class GraphSearchTests(unittest.TestCase):
@@ -33,6 +34,28 @@ class GraphSearchTests(unittest.TestCase):
         )
         self.assertIn("near_metro", candidate["graph_evidence"]["matched_features"])
         self.assertEqual(candidate["graph_score"], 1.0)
+
+    def test_former_area_filter_uses_v2_relationship(self):
+        parsed = self.parser.parse("tôi muốn mua nàh quận 2")
+        query, params = Neo4jGraphRepository._query(parsed)
+        self.assertIn("IN_FORMER_AREA", query)
+        self.assertIn("FormerAdminArea", query)
+        self.assertIn("quận 2", params["location_terms"])
+        self.assertIn("any(alias IN", query)
+
+    def test_graph_validated_location_does_not_get_filtered_again_in_postgres(self):
+        parsed = self.parser.parse("mua nhà huyện hóc môn")
+        where, params = SearchRepository()._where(parsed, graph_validated=True)
+        self.assertNotIn("district_values", params)
+        self.assertNotIn("former_admin_area_values", params)
+        self.assertFalse(any("former_admin_area" in clause for clause in where))
+
+    def test_current_ward_search_includes_prefix_free_normalized_alias(self):
+        parsed = self.parser.parse("mua nhà phường an khánh")
+        query, params = Neo4jGraphRepository._query(parsed)
+        self.assertIn("IN_WARD", query)
+        self.assertIn("phuong an khanh", params["location_terms"])
+        self.assertIn("an khanh", params["location_terms"])
 
     def test_unrelated_amenities_do_not_change_requested_score(self):
         parsed = self.parser.parse("Cách metro không quá 3 km")

@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-DATA_DIR="$PROJECT_DIR/Data/real_estate_graph_ready"
+DATA_DIR="$PROJECT_DIR/Data/real_estate_graph_ready_v2_address_mapping"
 CONTAINER_DATA_DIR="/csv/real_estate_graph_ready"
 
 force=false
@@ -28,12 +28,15 @@ required_files=(
   neo4j_ward_nodes.csv
   neo4j_street_nodes.csv
   neo4j_geo_cluster_nodes.csv
+  neo4j_former_admin_area_nodes.csv
   neo4j_listing_near_amenity_relationships.csv
   neo4j_listing_in_ward_relationships.csv
   neo4j_listing_on_street_relationships.csv
   neo4j_street_in_ward_relationships.csv
   neo4j_listing_in_cluster_relationships.csv
-  indexes.cypher
+  neo4j_listing_in_former_area_relationships.csv
+  neo4j_ward_mapped_from_former_area_relationships.csv
+  neo4j_post_import_setup.cypher
 )
 
 for file in "${required_files[@]}"; do
@@ -81,11 +84,14 @@ docker compose run --rm --no-deps neo4j \
   --nodes="$CONTAINER_DATA_DIR/neo4j_ward_nodes.csv" \
   --nodes="$CONTAINER_DATA_DIR/neo4j_street_nodes.csv" \
   --nodes="$CONTAINER_DATA_DIR/neo4j_geo_cluster_nodes.csv" \
+  --nodes="$CONTAINER_DATA_DIR/neo4j_former_admin_area_nodes.csv" \
   --relationships="$CONTAINER_DATA_DIR/neo4j_listing_near_amenity_relationships.csv" \
   --relationships="$CONTAINER_DATA_DIR/neo4j_listing_in_ward_relationships.csv" \
   --relationships="$CONTAINER_DATA_DIR/neo4j_listing_on_street_relationships.csv" \
   --relationships="$CONTAINER_DATA_DIR/neo4j_street_in_ward_relationships.csv" \
   --relationships="$CONTAINER_DATA_DIR/neo4j_listing_in_cluster_relationships.csv" \
+  --relationships="$CONTAINER_DATA_DIR/neo4j_listing_in_former_area_relationships.csv" \
+  --relationships="$CONTAINER_DATA_DIR/neo4j_ward_mapped_from_former_area_relationships.csv" \
   --multiline-fields=true \
   --overwrite-destination=true \
   --strict=true \
@@ -94,7 +100,7 @@ docker compose run --rm --no-deps neo4j \
 echo "Starting Neo4j and creating constraints/indexes..."
 docker compose up -d --wait neo4j
 docker compose exec -T neo4j sh -lc \
-  'neo_user=${NEO4J_AUTH%%/*}; neo_pass=${NEO4J_AUTH#*/}; /var/lib/neo4j/bin/cypher-shell -u "$neo_user" -p "$neo_pass" --fail-fast -f /csv/real_estate_graph_ready/indexes.cypher'
+  'neo_user=${NEO4J_AUTH%%/*}; neo_pass=${NEO4J_AUTH#*/}; /var/lib/neo4j/bin/cypher-shell -u "$neo_user" -p "$neo_pass" --fail-fast -f /csv/real_estate_graph_ready/neo4j_post_import_setup.cypher'
 
 trap - EXIT
 

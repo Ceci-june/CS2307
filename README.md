@@ -86,6 +86,17 @@ docker compose exec neo4j sh -lc \
 docker compose --profile graph-search up -d --build backend
 ```
 
+The graph import uses the V2 address-mapping package. It is idempotent: existing
+listings are updated by `listing_node_id`, while former administrative-area nodes
+and relationships are merged without duplicating the original graph.
+
+For a remote Neo4j configured through `NEO4J_URI`, import the same package from
+the client instead of relying on server-side `LOAD CSV`:
+
+```bash
+docker compose run --rm --no-deps backend python scripts/import_neo4j_v2.py
+```
+
 Use `debug=true` on `/v1/search` to inspect graph availability, candidate count and
 latency. `/v1/search/similar/{listing_id}` also combines vector similarity with shared
 ward, street, geo-cluster and amenity relationships.

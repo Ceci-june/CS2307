@@ -114,14 +114,25 @@ class RuleBasedQueryParser:
     def _parse_locations(original: str, text: str, hard: HardFilters) -> None:
         # Stop at punctuation or common constraint words to avoid swallowing the query.
         match = re.search(
-            r"\b(phuong|xa|quan)\s+([a-z0-9 ]{1,40}?)(?=\s*(?:,|;|\.|duoi|tren|gan|tu\s+\d|\d+\s*(?:pn|phong)|$))",
+            r"\b(thanh pho|thi xa|huyen|phuong|quan|xa|tp)\s+"
+            r"([a-z0-9 ]{1,40}?)(?=\s*(?:,|;|\.|cu\b|duoi|tren|gan|tu\s+\d|\d+\s*(?:pn|phong)|$))",
             text,
         )
         if match:
-            prefix = {"phuong": "Phường", "xa": "Xã", "quan": "Quận"}[match.group(1)]
+            prefix = {
+                "phuong": "Phường", "xa": "Xã", "quan": "Quận",
+                "huyen": "Huyện", "thi xa": "Thị Xã",
+                "thanh pho": "Thành Phố", "tp": "Thành Phố",
+            }[match.group(1)]
             name = " ".join(part.capitalize() for part in match.group(2).strip().split())
-            hard.districts.append(f"{prefix} {name}")
-        if "thu duc" in text and not hard.districts:
+            location = f"{prefix} {name}"
+            # In the V2 graph, district-level units are former administrative
+            # areas; current locations are represented by Phường/Xã wards.
+            if prefix not in {"Phường", "Xã"}:
+                hard.former_admin_areas.append(location)
+            else:
+                hard.districts.append(location)
+        if "thu duc" in text and not hard.districts and not hard.former_admin_areas:
             # Dataset contains both the former city label and pre-2021 districts.
             hard.former_admin_areas.extend(["Thành Phố Thủ Đức", "Quận 2", "Quận 9", "Quận Thủ Đức"])
 

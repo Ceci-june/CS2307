@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from threading import Lock
@@ -9,7 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from dotenv import dotenv_values, find_dotenv
 
-from src.search.normalizer import FEATURE_ALIASES
+from src.search.normalizer import FEATURE_ALIASES, normalize_text
 from src.search.schemas import ParsedSearchQuery
 
 logger = logging.getLogger(__name__)
@@ -137,22 +138,35 @@ class Neo4jGraphRepository:
             where.append("NOT toLower(l.property_type) IN $excluded_property_types")
             params["excluded_property_types"] = [value.lower() for value in hard.excluded_property_types]
 
-        locations = [value.lower() for value in hard.districts]
-        former_areas = [value.lower() for value in hard.former_admin_areas]
-        if locations:
+        location_values = [*hard.districts, *hard.former_admin_areas]
+        if location_values:
+            location_terms_set = set()
+            for value in location_values:
+                normalized = normalize_text(value)
+                location_terms_set.update({value.lower(), normalized})
+                short_name = re.sub(
+                    r"^(?:phuong|xa|quan|huyen|thi xa|thanh pho|tp)\s+",
+                    "",
+                    normalized,
+                )
+                if short_name:
+                    location_terms_set.add(short_name)
+            location_terms = sorted(term for term in location_terms_set if term)
             where.append(
-                "(toLower(l.ward_commune) IN $districts OR "
-                "EXISTS { MATCH (l)-[:IN_WARD]->(fw:Ward) "
-                "WHERE toLower(fw.ward_type + ' ' + fw.name) IN $districts })"
+                "(toLower(l.ward_commune) IN $location_terms OR "
+                "toLower(l.former_admin_area) IN $location_terms OR "
+                "EXISTS { MATCH (l)-[:IN_WARD]->(wa:Ward) "
+                "WHERE toLower(wa.ward_type + ' ' + wa.name) IN $location_terms "
+                "OR wa.normalized_name IN $location_terms "
+                "OR any(alias IN split(coalesce(wa.aliases, ''), '|') "
+                "WHERE toLower(alias) IN $location_terms) } OR "
+                "EXISTS { MATCH (l)-[:IN_FORMER_AREA]->(fa:FormerAdminArea) "
+                "WHERE toLower(fa.name) IN $location_terms "
+                "OR fa.normalized_name IN $location_terms "
+                "OR any(alias IN split(coalesce(fa.aliases, ''), '|') "
+                "WHERE toLower(alias) IN $location_terms) })"
             )
-            params["districts"] = locations
-        if former_areas:
-            where.append(
-                "(toLower(l.former_admin_area) IN $former_admin_areas OR "
-                "EXISTS { MATCH (l)-[:IN_WARD]->(fa:Ward) "
-                "WHERE toLower(fa.former_admin_area) IN $former_admin_areas })"
-            )
-            params["former_admin_areas"] = former_areas
+            params["location_terms"] = location_terms
 
         for feature in hard.required_features:
             if feature in GRAPH_FEATURE_CATEGORIES:
@@ -216,9 +230,11 @@ class Neo4jGraphRepository:
             MATCH (l:Listing)
             WHERE {where_sql}
             OPTIONAL MATCH (l)-[:IN_WARD]->(w:Ward)
+            OPTIONAL MATCH (l)-[:IN_FORMER_AREA]->(former:FormerAdminArea)
             OPTIONAL MATCH (l)-[near:NEAR_AMENITY]->(a:Amenity)
             WHERE size($amenity_categories) = 0 OR a.category IN $amenity_categories
             WITH l, collect(DISTINCT w.name) AS wards,
+                 collect(DISTINCT former.name) AS former_areas,
                  collect(DISTINCT CASE WHEN a IS NULL THEN null ELSE {{
                      category: a.category, name: a.name,
                      driving_distance_km: near.driving_distance_km,
@@ -230,7 +246,7 @@ class Neo4jGraphRepository:
                    wards,
                    [x IN amenities WHERE x IS NOT NULL] AS amenities,
                    [feature IN $preference_features WHERE coalesce(l[feature], false)] AS matched_features,
-                   l.former_admin_area AS former_admin_area,
+                   coalesce(head(former_areas), l.former_admin_area) AS former_admin_area,
                    l.geo_cluster_150m AS geo_cluster_150m
             ORDER BY coalesce(l.posted_date, date('1970-01-01')) DESC
             LIMIT $candidate_limit
