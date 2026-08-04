@@ -27,9 +27,20 @@ export function getStoredToken(): string | null {
   return window.localStorage.getItem(TOKEN_KEY)
 }
 
+// Shared JSON + bearer headers for client-side fetches (chat, feedback).
+export function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  const token = getStoredToken()
+  if (token) headers["Authorization"] = `Bearer ${token}`
+  return headers
+}
+
 function extractError(data: any, fallback: string): string {
+  // Backend success envelope is { data, errors }, but FastAPI HTTPException emits
+  // a bare { detail }; proxy/network failures emit { error }. Check all three so
+  // the real backend message (e.g. wrong password) actually reaches the user.
   const detail = data?.errors?.[0]?.detail
-  return detail || data?.error || fallback
+  return detail || data?.detail || data?.error || fallback
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

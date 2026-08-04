@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Heart, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
-import { sendInteraction } from '@/lib/feedback'
+import { useAuth } from '@/lib/auth-context'
+import { getSavedListingIds, sendInteraction, setSavedListing } from '@/lib/feedback'
 
 interface ContactFormProps {
   listingId?: number | string
@@ -14,7 +15,20 @@ interface ContactFormProps {
 
 export function ContactForm({ listingId }: ContactFormProps) {
   const [formData, setFormData] = useState({ name: '', phone: '' })
+  const { user } = useAuth()
   const [saved, setSaved] = useState(false)
+
+  // Reflect the real saved state on load (and when the user logs in/out).
+  useEffect(() => {
+    if (listingId == null) return
+    let active = true
+    getSavedListingIds().then((set) => {
+      if (active) setSaved(set.has(Number(listingId)))
+    })
+    return () => {
+      active = false
+    }
+  }, [user, listingId])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -29,10 +43,10 @@ export function ContactForm({ listingId }: ContactFormProps) {
   }
 
   const handleSave = () => {
-    setSaved(true)
-    if (listingId != null) {
-      sendInteraction({ listing_id: listingId, action_type: 'save', source: 'detail' })
-    }
+    if (listingId == null) return
+    const next = !saved
+    setSaved(next)
+    setSavedListing(listingId, next, 'detail')
   }
 
   const handleShare = () => {

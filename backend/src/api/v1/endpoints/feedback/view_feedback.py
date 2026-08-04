@@ -3,13 +3,19 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from starlette.concurrency import run_in_threadpool
 
-from src.services.auth.dependencies import get_current_user_optional
+from src.services.auth.dependencies import get_current_user, get_current_user_optional
 from src.services.feedback import repository
 from src.services.feedback.schemas import InteractionRequest
 from src.services.feedback.scoring import implicit_score
 
 
 router = APIRouter()
+
+
+@router.get("/saved", summary="Listing IDs the current user has saved")
+async def list_saved(current_user: dict = Depends(get_current_user)):
+    listing_ids = await run_in_threadpool(repository.get_saved_listing_ids, current_user["id"])
+    return {"data": listing_ids, "errors": [], "status": "success"}
 
 
 @router.post("/interaction", summary="Record a user interaction (view/save/contact/share/thumbs)")

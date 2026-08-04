@@ -1,21 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { BACKEND_URL } from "@/lib/backend"
+import { proxyJson } from "@/lib/backend"
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const response = await fetch(`${BACKEND_URL}/v1/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      cache: "no-store",
-    })
-    const data = await response.json()
-    return NextResponse.json(data, { status: response.status })
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Login failed" },
-      { status: 500 },
-    )
-  }
+export async function POST(request: Request) {
+  return proxyJson(request, "/v1/auth/login")
 }

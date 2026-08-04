@@ -127,7 +127,6 @@ export default function PropertyDetailPage() {
     if (!propertyListingKey) return
     const listingId = propertyListingKey
     const openedAt = Date.now()
-    sendInteraction({ listing_id: listingId, action_type: "view", source: "detail" })
     return () => {
       const dwell = (Date.now() - openedAt) / 1000
       sendInteraction({

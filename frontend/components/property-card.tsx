@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Heart, MapPin, Camera, Bed, Bath } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { sendInteraction } from "@/lib/feedback"
+import { useAuth } from "@/lib/auth-context"
+import { getSavedListingIds, setSavedListing } from "@/lib/feedback"
 import { cn } from "@/lib/utils"
 
 interface PropertyCardProps {
@@ -62,11 +63,23 @@ export function PropertyCard({ property, variant = "list" }: PropertyCardProps) 
   const hasPropertyImage = Boolean(property.images?.[0])
   const imageUrl = property.images?.[0] || DEFAULT_IMAGE
   const badgeStyle = getBadgeStyle(property.listing_type)
+  const { user } = useAuth()
   const [saved, setSaved] = useState(false)
   const [imageFailed, setImageFailed] = useState(!hasPropertyImage)
   const isCompact = variant === "compact"
 
   const listingId = property.listing_id ?? property.id
+
+  // Reflect the real saved state on load (and when the user logs in/out).
+  useEffect(() => {
+    let active = true
+    getSavedListingIds().then((set) => {
+      if (active) setSaved(set.has(Number(listingId)))
+    })
+    return () => {
+      active = false
+    }
+  }, [user, listingId])
 
   const handleCardClick = () => {
     // Save full property data to sessionStorage
@@ -78,9 +91,7 @@ export function PropertyCard({ property, variant = "list" }: PropertyCardProps) 
     e.stopPropagation()
     const next = !saved
     setSaved(next)
-    if (next) {
-      sendInteraction({ listing_id: listingId, action_type: "save", source: "search_bar" })
-    }
+    setSavedListing(listingId, next, "search_bar")
   }
 
   return (

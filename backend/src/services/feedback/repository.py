@@ -50,6 +50,25 @@ def insert_recommendation_events(rows: List[dict]) -> int:
     )
 
 
+def get_saved_listing_ids(user_id: int) -> List[int]:
+    """Listings currently saved by the user (latest save/unsave per listing is a save).
+
+    Backs the heart button's initial filled state so a saved listing renders as
+    saved on load and re-saves don't pile up duplicate rows.
+    """
+    rows = postgres_client.fetch_mappings(
+        "SELECT listing_id FROM ("
+        "  SELECT DISTINCT ON (listing_id) listing_id, action_type"
+        "  FROM interactions"
+        "  WHERE user_id = :user_id AND listing_id IS NOT NULL"
+        "        AND action_type IN ('save', 'unsave')"
+        "  ORDER BY listing_id, created_at DESC, id DESC"
+        ") latest WHERE action_type = 'save'",
+        user_id=user_id,
+    )
+    return [int(row["listing_id"]) for row in rows if row.get("listing_id") is not None]
+
+
 def get_recent_interactions(user_id: int, limit: int = 200) -> List[dict]:
     """Most recent positive-signal interactions for building a user profile."""
     return postgres_client.fetch_mappings(
