@@ -85,12 +85,12 @@ export default function PropertyDetailPage() {
     setIsLoading(false)
   }, [])
 
-  // Record a `view` on open and the accumulated dwell time on leave.
+  // Record a single `view` on leave, carrying the accumulated dwell time (one row
+  // per visit rather than one on open and another on unmount).
   useEffect(() => {
     if (!property) return
     const listingId = property.listing_id ?? property.id
     const openedAt = Date.now()
-    sendInteraction({ listing_id: listingId, action_type: "view", source: "detail" })
     return () => {
       const dwell = (Date.now() - openedAt) / 1000
       sendInteraction({

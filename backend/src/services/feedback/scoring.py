@@ -17,6 +17,10 @@ ACTION_BASE_SCORE = {
     "contact": 0.90,
     "thumbs_up": 1.00,
     "thumbs_down": -1.00,
+    # Neutral: records that a previously-saved listing was un-saved. Scored 0 so it
+    # is ignored by the profile (which filters implicit_score > 0) but still lets the
+    # saved-state query see the removal.
+    "unsave": 0.00,
 }
 
 VALID_ACTIONS = set(ACTION_BASE_SCORE)

@@ -22,8 +22,22 @@ _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _DEFAULT_EXPIRE_MINUTES = 60 * 24 * 7
 
 
+def _is_debug() -> bool:
+    return str(config_value("DEBUG", "false")).lower() in {"1", "true", "yes"}
+
+
 def _secret_key() -> str:
-    return config_value("ACCESS_TOKEN_SECRET_KEY", "changeme") or "changeme"
+    secret = config_value("ACCESS_TOKEN_SECRET_KEY")
+    if not secret or secret == "changeme":
+        # A default/empty secret makes tokens trivially forgeable. Tolerate it only
+        # in debug so local dev still works; fail loudly everywhere else.
+        if _is_debug():
+            return secret or "changeme"
+        raise RuntimeError(
+            "ACCESS_TOKEN_SECRET_KEY is not set. Refusing to sign or verify JWTs with a "
+            "default secret outside debug mode — set ACCESS_TOKEN_SECRET_KEY in the environment."
+        )
+    return secret
 
 
 def _algorithm() -> str:
@@ -60,8 +74,13 @@ def create_access_token(user_id: int, username: str) -> str:
 
 
 def decode_token(token: str) -> Optional[Dict[str, Any]]:
-    """Return the token payload, or ``None`` if it is invalid/expired."""
+    """Return the token payload, or ``None`` if it is invalid/expired/unconfigured.
+
+    Fails closed: a missing secret (RuntimeError from ``_secret_key``) yields an
+    unauthenticated result rather than a crash, while ``create_access_token`` still
+    raises so the misconfiguration surfaces at login/register.
+    """
     try:
         return jwt.decode(token, _secret_key(), algorithms=[_algorithm()])
-    except JWTError:
+    except (JWTError, RuntimeError):
         return None

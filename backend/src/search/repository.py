@@ -4,8 +4,12 @@ import json
 from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
 
-from src.search.schemas import ParsedSearchQuery
+from src.search.schemas import DEFAULT_NUMERIC_TOLERANCE, ParsedSearchQuery, numeric_bounds
 from src.settings.event import postgres_client
+
+
+# Alias for the shared tolerance so existing references keep working.
+PRICE_AREA_TOLERANCE = DEFAULT_NUMERIC_TOLERANCE
 
 
 BOOLEAN_COLUMNS = {
@@ -69,6 +73,7 @@ class SearchRepository:
         *,
         include_amenities: bool = True,
         graph_validated: bool = False,
+        numeric_tolerance: Optional[float] = PRICE_AREA_TOLERANCE,
     ) -> Tuple[List[str], Dict]:
         hard = parsed.hard_filters
         where = ["p.is_deleted = false", "p.is_active = true"]
@@ -78,12 +83,15 @@ class SearchRepository:
             ("bedrooms", "bedrooms", hard.bedrooms), ("bathrooms", "bathrooms", hard.bathrooms),
         )
         for column, key, value in numeric:
-            if value.min is not None:
+            # A lone approximate target becomes a soft ±tolerance band; explicit
+            # min/max pass through unchanged. numeric_tolerance=None drops the band.
+            lower, upper = numeric_bounds(value, numeric_tolerance)
+            if lower is not None:
                 where.append(f"p.{column} >= :{key}_min")
-                params[f"{key}_min"] = value.min
-            if value.max is not None:
+                params[f"{key}_min"] = lower
+            if upper is not None:
                 where.append(f"p.{column} <= :{key}_max")
-                params[f"{key}_max"] = value.max
+                params[f"{key}_max"] = upper
 
         list_filters = (
             ("property_type", hard.property_types), ("district", hard.districts),
@@ -128,8 +136,14 @@ class SearchRepository:
             where.append("EXISTS (SELECT 1 FROM listing_amenity_distances lad WHERE " + " AND ".join(conditions) + ")")
         return where, params
 
-    def search(self, parsed: ParsedSearchQuery, query_embedding: Optional[List[float]], candidate_limit: int = 1000) -> List[dict]:
-        where, params = self._where(parsed)
+    def search(
+        self,
+        parsed: ParsedSearchQuery,
+        query_embedding: Optional[List[float]],
+        candidate_limit: int = 1000,
+        numeric_tolerance: Optional[float] = PRICE_AREA_TOLERANCE,
+    ) -> List[dict]:
+        where, params = self._where(parsed, numeric_tolerance=numeric_tolerance)
         params["candidate_limit"] = min(max(candidate_limit, parsed.top_k), 3000)
         params["text_query"] = parsed.semantic_query
         if query_embedding is not None:
@@ -204,8 +218,8 @@ class SearchRepository:
         """
         return [_json_safe(row) for row in postgres_client.fetch_mappings(query, **params)]
 
-    def count(self, parsed: ParsedSearchQuery) -> int:
-        where, params = self._where(parsed)
+    def count(self, parsed: ParsedSearchQuery, numeric_tolerance: Optional[float] = PRICE_AREA_TOLERANCE) -> int:
+        where, params = self._where(parsed, numeric_tolerance=numeric_tolerance)
         rows = postgres_client.fetch_mappings(
             f"SELECT COUNT(*) AS total FROM properties p WHERE {' AND '.join(where)}", **params
         )

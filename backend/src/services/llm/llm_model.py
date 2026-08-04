@@ -114,6 +114,16 @@ class LLModel:
             await client.close()
         self._openai_clients = []
 
+    def has_credentials(self) -> bool:
+        """Whether an API key is configured for the active provider.
+
+        Used to skip a doomed LLM round-trip (and its retries) when no key is set,
+        so callers fall back cleanly instead of paying the timeout.
+        """
+        if self.provider == "gemini":
+            return bool(self.gemini_api_keys)
+        return bool(self.api_keys)
+
     async def ask_llm(
         self,
         system_prompt: str,
@@ -122,20 +132,29 @@ class LLModel:
         retries: int = 3,
         timeout_seconds: int = 60 * 10,
         history: Optional[List[dict]] = None,
+        *,
+        json_mode: bool = False,
+        temperature: Optional[float] = None,
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
         """Ask the LLM a single turn, optionally with prior conversation ``history``.
 
         ``history`` is an ordered list of ``{"role": "user"|"assistant", "content": str}``
         turns that precede ``user_prompt``. Passing ``None`` reproduces the original
         single-shot behavior exactly.
+
+        ``json_mode`` requests native JSON output (OpenAI ``response_format`` /
+        Gemini ``response_mime_type``). ``temperature`` overrides the default for
+        this call only (e.g. a low value for grounded/extractive answers).
         """
         selected_model = model or self.model_name
         if self.provider == "gemini":
             return await self._ask_gemini(
-                system_prompt, user_prompt, selected_model, retries, timeout_seconds, history
+                system_prompt, user_prompt, selected_model, retries, timeout_seconds,
+                history, json_mode=json_mode, temperature=temperature,
             )
         return await self._ask_openai_compatible(
-            system_prompt, user_prompt, selected_model, retries, timeout_seconds, history
+            system_prompt, user_prompt, selected_model, retries, timeout_seconds,
+            history, json_mode=json_mode, temperature=temperature,
         )
 
     async def _ask_gemini(
@@ -146,8 +165,16 @@ class LLModel:
         retries: int,
         timeout_seconds: int,
         history: Optional[List[dict]] = None,
+        *,
+        json_mode: bool = False,
+        temperature: Optional[float] = None,
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
         last_error: Optional[Exception] = None
+        generation_config = dict(self.generation_config)
+        if temperature is not None:
+            generation_config["temperature"] = temperature
+        if json_mode:
+            generation_config["response_mime_type"] = "application/json"
         contents = []
         for turn in history or []:
             role = "model" if turn.get("role") == "assistant" else "user"
@@ -159,7 +186,7 @@ class LLModel:
                 genai.configure(api_key=api_key)
                 gemini_model = genai.GenerativeModel(
                     model_name=model,
-                    generation_config=self.generation_config,
+                    generation_config=generation_config,
                     system_instruction=system_prompt,
                     safety_settings=self.safety_settings,
                 )
@@ -184,6 +211,9 @@ class LLModel:
         retries: int,
         timeout_seconds: int,
         history: Optional[List[dict]] = None,
+        *,
+        json_mode: bool = False,
+        temperature: Optional[float] = None,
     ) -> Tuple[bool, Optional[str], Optional[Exception]]:
         if not self._openai_clients:
             self.start()
@@ -194,18 +224,22 @@ class LLModel:
             messages.append({"role": role, "content": str(turn.get("content") or "")})
         messages.append({"role": "user", "content": user_prompt})
 
+        create_kwargs = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature if temperature is not None else self.generation_config["temperature"],
+            "top_p": self.generation_config["top_p"],
+            "max_tokens": self.generation_config["max_output_tokens"],
+            "timeout": timeout_seconds,
+        }
+        if json_mode:
+            create_kwargs["response_format"] = {"type": "json_object"}
+
         last_error: Optional[Exception] = None
         for attempt in range(1, retries + 1):
             try:
                 client = random.choice(self._openai_clients)
-                response = await client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=self.generation_config["temperature"],
-                    top_p=self.generation_config["top_p"],
-                    max_tokens=self.generation_config["max_output_tokens"],
-                    timeout=timeout_seconds,
-                )
+                response = await client.chat.completions.create(**create_kwargs)
                 content = response.choices[0].message.content
                 if content is None:
                     raise ValueError("OpenAI-compatible endpoint returned empty content")

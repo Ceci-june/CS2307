@@ -107,6 +107,26 @@ class HybridSearchService:
                     relaxations = changes
                     break
 
+        # If a fuzzy price/area band leaves no candidates, widen it (±30%) and then
+        # drop it entirely, so an approximate number never returns an empty result.
+        price = applied.hard_filters.price
+        area = applied.hard_filters.area
+        has_fuzzy_target = (
+            (price.target is not None and price.min is None and price.max is None)
+            or (area.target is not None and area.min is None and area.max is None)
+        )
+        if not candidates and has_fuzzy_target and not parsed.protected_constraints:
+            for tolerance in (0.30, None):
+                trial_candidates = await run_in_threadpool(
+                    search_repository.search, applied, query_embedding, candidate_limit, tolerance
+                )
+                if trial_candidates:
+                    candidates = trial_candidates
+                    total_candidates = await run_in_threadpool(search_repository.count, applied, tolerance)
+                    band = "±30%" if tolerance is not None else "bỏ giới hạn giá/diện tích"
+                    relaxations.append(f"Nới lỏng khoảng giá/diện tích ({band})")
+                    break
+
         user_profile = None
         if user_id is not None:
             from src.search.personalization import build_user_profile
@@ -117,7 +137,9 @@ class HybridSearchService:
         selected = diversify(ranked, start + request.top_k)[start:start + request.top_k]
         results = [attach_explanation(item, applied) for item in selected]
         assistant_answer, llm_answer_generated = (None, False)
-        if generate_llm_answer:
+        # Skip the LLM round-trip (and its retries) when disabled or no key is set,
+        # so keyless deployments fall back cleanly to the deterministic explanation.
+        if generate_llm_answer and self.llm_answer.enabled() and llm_model.has_credentials():
             assistant_answer, llm_answer_generated = await self.llm_answer.generate(
                 request.query,
                 parsed.model_dump(mode="json"),
@@ -155,6 +177,7 @@ class HybridSearchService:
                 "embedding_device": embedding_model.device_name,
                 "embedding_gpu": embedding_model.is_gpu,
                 "embedding_coverage": {"embedded": embedded_count, "total": property_count},
+                "numeric_bands": self._numeric_bands(applied),
                 "graph": {
                     "available": graph_response.available,
                     "candidates": len(graph_response.candidates),
@@ -163,6 +186,22 @@ class HybridSearchService:
                 },
             }
         return response
+
+    @staticmethod
+    def _numeric_bands(parsed: ParsedSearchQuery) -> dict:
+        """Effective price/area filter bounds after fuzzy-target expansion (debug only)."""
+        from src.search.schemas import numeric_bounds
+
+        bands: dict = {}
+        for name, rng in (("price", parsed.hard_filters.price), ("area", parsed.hard_filters.area)):
+            lower, upper = numeric_bounds(rng)
+            if lower is not None or upper is not None or rng.target is not None:
+                bands[name] = {
+                    "min": round(lower, 4) if lower is not None else None,
+                    "max": round(upper, 4) if upper is not None else None,
+                    "target": rng.target,
+                }
+        return bands
 
     @staticmethod
     def _log_impressions(request: SearchRequest, results: list, user_id: int) -> None:
@@ -176,7 +215,9 @@ class HybridSearchService:
                 listing_id = item.get("listing_id")
                 if listing_id is None:
                     continue
-                chosen = bool(item.get("explanation"))
+                # The deterministic path always sets 'explanation', so it is not a
+                # signal. 'llm_insight' is set only when the LLM actually chose this listing.
+                chosen = bool(item.get("llm_insight"))
                 rows.append(
                     {
                         "result_set_id": result_set_id,
