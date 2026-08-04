@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from starlette.requests import Request
 
 from src.api.v1.endpoints.properties.controllers.controller_properties import (
@@ -219,6 +219,14 @@ async def view_get_ai_search(
 @router.get("/{property_id}/similar", summary="Get similar properties from pgvector")
 async def view_get_similar_properties(property_id: str, limit: int = Query(default=10, ge=1, le=50)):
     result = await hybrid_search_service.similar(property_id, limit)
+    return {"data": result, "errors": [], "status": "success"}
+
+
+@router.get("/{property_id}/graph", summary="Get the Neo4j subgraph for a property")
+async def view_get_property_graph(property_id: str):
+    result = await hybrid_search_service.property_graph(property_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Property not found")
     return {"data": result, "errors": [], "status": "success"}
 
 

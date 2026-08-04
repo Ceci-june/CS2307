@@ -57,6 +57,80 @@ class GraphSearchTests(unittest.TestCase):
         self.assertIn("phuong an khanh", params["location_terms"])
         self.assertIn("an khanh", params["location_terms"])
 
+    def test_listing_subgraph_query_is_parameterized(self):
+        query = Neo4jGraphRepository._subgraph_query()
+        self.assertIn("$listing_id", query)
+        self.assertIn("NEAR_AMENITY", query)
+        self.assertIn("IN_FORMER_AREA", query)
+        self.assertNotIn("MATCH (l:Listing {listing_id:", query)
+
+    def test_listing_subgraph_projection_is_whitelisted_and_deduplicated(self):
+        response = Neo4jGraphRepository._subgraph_from_record(
+            {
+                "listing_node": {
+                    "id": "listing-node-1",
+                    "properties": {
+                        "listing_id": "123",
+                        "title": "Căn hộ mẫu",
+                        "secret": "must not leak",
+                    },
+                },
+                "connections": [
+                    {
+                        "relationship_type": "NEAR_AMENITY",
+                        "target_id": "amenity-far",
+                        "target_type": "Amenity",
+                        "target_label": "Ga xa",
+                        "target_properties": {"name": "Ga xa", "category": "metro", "secret": "x"},
+                        "relationship_properties": {
+                            "is_nearest": False,
+                            "driving_distance_km": 2.0,
+                            "rank": 1,
+                            "internal": "x",
+                        },
+                    },
+                    {
+                        "relationship_type": "NEAR_AMENITY",
+                        "target_id": "amenity-near",
+                        "target_type": "Amenity",
+                        "target_label": "Ga gan",
+                        "target_properties": {"name": "Ga gan", "category": "metro"},
+                        "relationship_properties": {
+                            "is_nearest": True,
+                            "driving_distance_km": 1.0,
+                            "driving_duration_min": 2.4,
+                            "rank": 2,
+                        },
+                    },
+                    {
+                        "relationship_type": "IN_WARD",
+                        "target_id": "ward-1",
+                        "target_type": "Ward",
+                        "target_label": "Phường Mẫu",
+                        "target_properties": {"name": "Phường Mẫu", "city_province": "Hồ Chí Minh"},
+                        "relationship_properties": {},
+                    },
+                ],
+            }
+        )
+        self.assertEqual(response.state, "ready")
+        self.assertEqual(len(response.nodes), 3)
+        self.assertEqual(len(response.edges), 2)
+        self.assertEqual(response.amenity_categories, ["metro"])
+        self.assertEqual(response.nodes[0]["id"], "listing:listing-node-1")
+        self.assertNotIn("secret", response.nodes[0]["properties"])
+        self.assertEqual(response.nodes[1]["label"], "Phường Mẫu")
+        self.assertEqual(response.nodes[2]["label"], "Ga gan")
+        self.assertEqual(response.edges[-1]["label"], "1.0 km · 2.4 phút")
+        self.assertNotIn("internal", response.edges[-1]["properties"])
+        self.assertNotIn("rank", response.edges[-1]["properties"])
+
+    def test_listing_subgraph_disabled_is_graceful(self):
+        repository = Neo4jGraphRepository()
+        repository.enabled = False
+        response = repository.subgraph("123")
+        self.assertEqual(response.state, "unavailable")
+
     def test_unrelated_amenities_do_not_change_requested_score(self):
         parsed = self.parser.parse("Cách metro không quá 3 km")
         items = [

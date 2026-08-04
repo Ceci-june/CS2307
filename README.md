@@ -16,6 +16,7 @@ reranking. Search falls back to PostgreSQL when Neo4j is unavailable.
 POST /v1/search/parse
 POST /v1/search
 POST /v1/search/similar/{listing_id}
+GET /v1/properties/{property_id}/graph
 ```
 
 Prepare a fresh local database (run from the repository root):
