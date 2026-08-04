@@ -1,5 +1,0 @@
-services:
-  backend:
-    gpus: all
-    environment:
-      SEARCH_EMBEDDING_DEVICE: cuda

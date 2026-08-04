@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Backfill PostgreSQL search_text, graph-derived metadata and E5 embeddings.
 
-Run from the backend directory:
-    SEARCH_ALLOW_MODEL_DOWNLOAD=true python scripts/build_search_index.py
+Run from the backend directory. Embeddings are requested from the configured
+OpenAI-compatible embedding endpoint.
 """
 from __future__ import annotations
 

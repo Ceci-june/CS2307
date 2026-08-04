@@ -1,8 +1,4 @@
-pandas
 numpy
-scikit-learn
-torch
-transformers
 fastapi==0.108.0
 pydantic==2.5.2
 python-dotenv==1.0.0
