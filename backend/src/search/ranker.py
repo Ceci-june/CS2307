@@ -11,6 +11,11 @@ from src.search.schemas import ParsedSearchQuery, RankingProfile
 # personalization nudges rather than overrides the deterministic ranking.
 PERSONALIZATION_WEIGHT = 0.15
 
+# Graded falloff width for an approximate numeric target. Kept a touch wider than
+# the retrieval band (repository.PRICE_AREA_TOLERANCE = 0.15) so every listing that
+# survives the filter still scores positively, degrading smoothly toward the edge.
+RANK_TARGET_TOLERANCE = 0.25
+
 
 WEIGHTS: Dict[RankingProfile, Dict[str, float]] = {
     RankingProfile.BALANCED: {"semantic": .36, "graph": .14, "amenity": .13, "features": .10, "location": .10, "target": .08, "freshness": .05, "quality": .04},
@@ -28,7 +33,7 @@ def range_fit(value, lower=None, upper=None, target=None) -> float:
         return 0.0
     value = float(value)
     if target is not None:
-        tolerance = max(abs(float(target)) * .25, 1.0)
+        tolerance = max(abs(float(target)) * RANK_TARGET_TOLERANCE, 1.0)
         return max(0.0, 1 - abs(value - float(target)) / tolerance)
     if lower is not None and value < lower:
         return 0.0

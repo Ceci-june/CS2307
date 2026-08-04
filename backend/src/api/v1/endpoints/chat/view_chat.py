@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -63,8 +64,11 @@ async def chat(data: ChatRequest, current_user: dict = Depends(get_current_user)
         result = await hybrid_search_service.search(
             request, history=history, user_id=user_id
         )
-    except Exception as exc:  # noqa: BLE001 - surface a clean error to the client
-        raise HTTPException(status_code=500, detail=f"Chat search failed: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001 - log internals, return a generic message
+        logger.exception("Chat search failed for conversation {}", conversation_id)
+        raise HTTPException(
+            status_code=500, detail="Đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau."
+        ) from exc
 
     assistant_text = result.get("assistant_answer") or (
         "Dựa trên yêu cầu của bạn, tôi tìm thấy các bất động sản sau:"
@@ -79,7 +83,9 @@ async def chat(data: ChatRequest, current_user: dict = Depends(get_current_user)
         result.get("results"),
         result.get("parsed_query"),
     )
-    await run_in_threadpool(repository.touch_conversation, conversation_id, data.message[:80])
+    # Title is set once at creation; only bump updated_at here (COALESCE kept the
+    # original title anyway, so passing it every turn was a no-op).
+    await run_in_threadpool(repository.touch_conversation, conversation_id)
 
     payload = {"conversation_id": conversation_id, **result}
     return {"data": payload, "errors": [], "status": "success"}

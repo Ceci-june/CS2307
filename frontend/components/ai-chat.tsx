@@ -5,8 +5,7 @@ import { Send, Bot, User, Loader2, Sparkles, Plus, MessageSquare, ThumbsUp, Thum
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PropertyCard } from "@/components/property-card"
-import { useAuth } from "@/lib/auth-context"
-import { getStoredToken } from "@/lib/auth-context"
+import { useAuth, authHeaders } from "@/lib/auth-context"
 import { sendInteraction } from "@/lib/feedback"
 
 interface PropertyResult {
@@ -44,11 +43,13 @@ function nowTime() {
   return new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
 }
 
-function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" }
-  const token = getStoredToken()
-  if (token) headers["Authorization"] = `Bearer ${token}`
-  return headers
+// Format a stored ISO timestamp; fall back to "now" for live messages.
+function formatTime(value?: string) {
+  if (!value) return nowTime()
+  const date = new Date(value)
+  return isNaN(date.getTime())
+    ? nowTime()
+    : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
 }
 
 export function AIChat({ filters: propFilters = {} }: AIChatProps) {
@@ -101,7 +102,7 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
         role: m.role === "assistant" ? "ai" : "user",
         content: m.content,
         properties: Array.isArray(m.results) && m.results.length > 0 ? m.results : undefined,
-        timestamp: nowTime(),
+        timestamp: formatTime(m.created_at),
       }))
       setConversationId(id)
       setMessages(rehydrated.length > 0 ? rehydrated : [{ ...WELCOME, timestamp: nowTime() }])

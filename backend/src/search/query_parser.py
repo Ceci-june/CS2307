@@ -69,6 +69,13 @@ class RuleBasedQueryParser:
 
     @staticmethod
     def _parse_price(text: str, hard: HardFilters) -> None:
+        # A range such as "2-3 tỷ" / "từ 2 đến 3 tỷ" pins both bounds.
+        rng = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:-|den|toi|~)\s*(\d+(?:[.,]\d+)?)\s*(ty|trieu)", text)
+        if rng:
+            low = price_to_billion(float(rng.group(1).replace(",", ".")), rng.group(3))
+            high = price_to_billion(float(rng.group(2).replace(",", ".")), rng.group(3))
+            hard.price.min, hard.price.max = sorted((low, high))
+            return
         patterns = (
             ("max", r"(?:duoi|toi da|khong qua|khong vuot qua)\s*(\d+(?:[.,]\d+)?)\s*(ty|trieu)"),
             ("min", r"(?:tren|toi thieu|tu)\s*(\d+(?:[.,]\d+)?)\s*(ty|trieu)"),
@@ -78,18 +85,35 @@ class RuleBasedQueryParser:
             match = re.search(pattern, text)
             if match:
                 setattr(hard.price, field, price_to_billion(float(match.group(1).replace(",", ".")), match.group(2)))
+        # A bare "5 tỷ" with no qualifier is an approximate target (fuzzy band applied downstream).
+        if hard.price.min is None and hard.price.max is None and hard.price.target is None:
+            bare = re.search(r"(\d+(?:[.,]\d+)?)\s*(ty|trieu)", text)
+            if bare:
+                hard.price.target = price_to_billion(float(bare.group(1).replace(",", ".")), bare.group(2))
 
     @staticmethod
     def _parse_area(text: str, hard: HardFilters) -> None:
+        unit = r"(?:m2|m²|met vuong)"
+        rng = re.search(rf"(\d+(?:[.,]\d+)?)\s*(?:-|den|toi|~)\s*(\d+(?:[.,]\d+)?)\s*{unit}", text)
+        if rng:
+            low = float(rng.group(1).replace(",", "."))
+            high = float(rng.group(2).replace(",", "."))
+            hard.area.min, hard.area.max = sorted((low, high))
+            return
         patterns = (
-            ("max", r"(?:dien tich\s*)?(?:duoi|toi da|khong qua)\s*(\d+(?:[.,]\d+)?)\s*(?:m2|m²|met vuong)"),
-            ("min", r"(?:dien tich\s*)?(?:tren|toi thieu|tu)\s*(\d+(?:[.,]\d+)?)\s*(?:m2|m²|met vuong)"),
-            ("target", r"(?:dien tich\s*)?(?:khoang|tam)\s*(\d+(?:[.,]\d+)?)\s*(?:m2|m²|met vuong)"),
+            ("max", rf"(?:dien tich\s*)?(?:duoi|toi da|khong qua)\s*(\d+(?:[.,]\d+)?)\s*{unit}"),
+            ("min", rf"(?:dien tich\s*)?(?:tren|toi thieu|tu)\s*(\d+(?:[.,]\d+)?)\s*{unit}"),
+            ("target", rf"(?:dien tich\s*)?(?:khoang|tam)\s*(\d+(?:[.,]\d+)?)\s*{unit}"),
         )
         for field, pattern in patterns:
             match = re.search(pattern, text)
             if match:
                 setattr(hard.area, field, float(match.group(1).replace(",", ".")))
+        # A bare "70m2" with no qualifier is an approximate target.
+        if hard.area.min is None and hard.area.max is None and hard.area.target is None:
+            bare = re.search(rf"(\d+(?:[.,]\d+)?)\s*{unit}", text)
+            if bare:
+                hard.area.target = float(bare.group(1).replace(",", "."))
 
     @staticmethod
     def _parse_rooms(text: str, hard: HardFilters) -> None:

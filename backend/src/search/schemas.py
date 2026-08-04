@@ -6,6 +6,12 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+# A bare/approximate numeric target ("5 tỷ", "70m2") is matched as a soft band of
+# ±this fraction rather than an exact value. Shared by the retrieval filter and the
+# ranker's graded target tolerance so filtering and ranking stay consistent.
+DEFAULT_NUMERIC_TOLERANCE = 0.15
+
+
 class NumericRange(BaseModel):
     min: Optional[float] = None
     max: Optional[float] = None
@@ -16,6 +22,21 @@ class NumericRange(BaseModel):
         if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("min must be less than or equal to max")
         return self
+
+
+def numeric_bounds(rng, tolerance: Optional[float] = DEFAULT_NUMERIC_TOLERANCE):
+    """Effective (lower, upper) filter bounds for a numeric range.
+
+    Explicit min/max are returned unchanged. A lone approximate ``target`` expands
+    to a ±``tolerance`` band; ``tolerance=None`` drops the target so it does not
+    filter at all (used by zero-result relaxation).
+    """
+    lower, upper = rng.min, rng.max
+    target = getattr(rng, "target", None)
+    if lower is None and upper is None and target is not None and tolerance is not None:
+        lower = target * (1 - tolerance)
+        upper = target * (1 + tolerance)
+    return lower, upper
 
 
 class IntegerRange(BaseModel):
