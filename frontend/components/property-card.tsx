@@ -7,27 +7,29 @@ import { Heart, MapPin, Camera, Bed, Bath } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { sendInteraction } from "@/lib/feedback"
+import { cn } from "@/lib/utils"
 
 interface PropertyCardProps {
   property: {
-    id: string
+    id: string | number
     listing_id?: number | string
-    title: string
-    price_range: string
+    title?: string | null
+    price_range?: string | number | null
     area: number | null
-    address: string
-    description: string
-    images: string[]
-    listing_type: string
+    address?: string | null
+    description?: string | null
+    images?: string[] | null
+    listing_type?: string | null
     bedrooms: number | null
     bathrooms: number | null
-    posted_date: string
+    posted_date?: string | null
   }
+  variant?: "list" | "compact"
 }
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop"
 
-const getBadgeStyle = (listingType: string) => {
+const getBadgeStyle = (listingType?: string | null) => {
   if (listingType === "VIP Kim Cương") {
     return { bg: "bg-[#E03C31]", text: "VIP KIM CƯƠNG" }
   } else if (listingType === "VIP Vàng") {
@@ -36,9 +38,12 @@ const getBadgeStyle = (listingType: string) => {
   return null
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) return "Chưa cập nhật"
+
   try {
     const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return dateString
     const day = String(date.getDate()).padStart(2, "0")
     const month = String(date.getMonth() + 1).padStart(2, "0")
     const year = date.getFullYear()
@@ -48,10 +53,18 @@ const formatDate = (dateString: string) => {
   }
 }
 
-export function PropertyCard({ property }: PropertyCardProps) {
+const formatPrice = (price?: string | number | null) => {
+  if (price === null || price === undefined || price === "") return "Liên hệ"
+  return `${price} Tỷ VNĐ`
+}
+
+export function PropertyCard({ property, variant = "list" }: PropertyCardProps) {
+  const hasPropertyImage = Boolean(property.images?.[0])
   const imageUrl = property.images?.[0] || DEFAULT_IMAGE
   const badgeStyle = getBadgeStyle(property.listing_type)
   const [saved, setSaved] = useState(false)
+  const [imageFailed, setImageFailed] = useState(!hasPropertyImage)
+  const isCompact = variant === "compact"
 
   const listingId = property.listing_id ?? property.id
 
@@ -71,20 +84,24 @@ export function PropertyCard({ property }: PropertyCardProps) {
   }
 
   return (
-    <Link href={`/chi-tiet/${property.id}`} onClick={handleCardClick}>
-      <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
-        <div className="flex flex-col md:flex-row">
+    <Link href={`/chi-tiet/${property.id}`} onClick={handleCardClick} className="block h-full">
+      <article className="h-full bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+        <div className={cn("flex h-full flex-col", !isCompact && "md:flex-row")}>
           {/* Image Section - Left Side */}
-          <div className="relative w-full md:w-[280px] lg:w-[320px] h-[200px] md:h-auto md:min-h-[220px] flex-shrink-0">
+          <div
+            className={cn(
+              "relative w-full flex-shrink-0",
+              isCompact
+                ? "h-48 sm:h-52"
+                : "h-[200px] md:h-auto md:min-h-[220px] md:w-[280px] lg:w-[320px]",
+            )}
+          >
             <Image
-              src={imageUrl}
-              alt={property.title}
+              src={imageFailed ? DEFAULT_IMAGE : imageUrl}
+              alt={property.title || "Hình ảnh bất động sản"}
               fill
               className="object-cover"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement
-                img.src = DEFAULT_IMAGE
-              }}
+              onError={() => setImageFailed(true)}
             />
             
             {/* Badge - Only show if not "Tin thường" */}
@@ -96,8 +113,15 @@ export function PropertyCard({ property }: PropertyCardProps) {
               </div>
             )}
 
+            {/* Make it clear that the repeated fallback is not a MinIO image. */}
+            {imageFailed && (
+              <div className="absolute bottom-3 left-3 rounded bg-black/60 px-2 py-1 text-xs text-white">
+                Ảnh minh họa
+              </div>
+            )}
+
             {/* Photo Count */}
-            {property.images && property.images.length > 0 && (
+            {!imageFailed && property.images && property.images.length > 0 && (
               <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                 <Camera className="h-3 w-3" />
                 <span>{property.images.length}</span>
@@ -106,11 +130,11 @@ export function PropertyCard({ property }: PropertyCardProps) {
           </div>
 
           {/* Content Section - Right Side */}
-          <div className="flex-1 p-4 flex flex-col">
+          <div className="flex min-w-0 flex-1 flex-col p-4">
             {/* Title & Favorite */}
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="font-semibold text-foreground line-clamp-2 flex-1">
-                {property.title}
+                {property.title || "Bất động sản chưa cập nhật tiêu đề"}
               </h3>
               <button
                 type="button"
@@ -123,32 +147,40 @@ export function PropertyCard({ property }: PropertyCardProps) {
             </div>
 
             {/* Price & Area */}
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-lg font-bold text-[#E03C31]">{property.price_range} Tỷ VNĐ</span>
-              <span className="text-muted-foreground">|</span>
-              <span className="text-muted-foreground">{property.area} m²</span>
+            <div className={cn("mb-2 flex items-center", isCompact ? "gap-2" : "gap-3")}>
+              <span className={cn("font-bold text-[#E03C31]", isCompact ? "text-base" : "text-lg")}>
+                {formatPrice(property.price_range)}
+              </span>
+              {property.area !== null && property.area !== undefined && (
+                <>
+                  <span className="text-muted-foreground">|</span>
+                  <span className="whitespace-nowrap text-muted-foreground">{property.area} m²</span>
+                </>
+              )}
             </div>
 
             {/* Location */}
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
               <MapPin className="h-4 w-4 flex-shrink-0" />
-              <span className="line-clamp-1">{property.address}</span>
+              <span className="line-clamp-1">{property.address || "Địa chỉ đang cập nhật"}</span>
             </div>
 
             {/* Description */}
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">
-              {property.description}
-            </p>
+            {!isCompact && (
+              <p className="mb-4 line-clamp-2 flex-1 text-sm text-muted-foreground">
+                {property.description || "Thông tin mô tả đang được cập nhật."}
+              </p>
+            )}
 
             {/* Specs - Bedrooms & Bathrooms */}
-            <div className="flex items-center gap-4 mb-3">
-              {property.bedrooms !== null && (
+            <div className="mb-3 flex min-h-5 items-center gap-4">
+              {property.bedrooms !== null && property.bedrooms !== undefined && (
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Bed className="h-4 w-4" />
                   <span>{property.bedrooms} phòng</span>
                 </div>
               )}
-              {property.bathrooms !== null && (
+              {property.bathrooms !== null && property.bathrooms !== undefined && (
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Bath className="h-4 w-4" />
                   <span>{property.bathrooms} phòng tắm</span>
@@ -161,13 +193,17 @@ export function PropertyCard({ property }: PropertyCardProps) {
               <p className="text-xs text-muted-foreground">
                 {formatDate(property.posted_date)}
               </p>
-              <Button className="bg-[#E03C31] hover:bg-[#c43428] text-white h-9 px-4 text-sm" onClick={(e) => e.preventDefault()}>
-                Xem chi tiết
-              </Button>
+              {isCompact ? (
+                <span className="text-sm font-medium text-[#E03C31]">Xem chi tiết</span>
+              ) : (
+                <Button className="bg-[#E03C31] hover:bg-[#c43428] text-white h-9 px-4 text-sm">
+                  Xem chi tiết
+                </Button>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      </article>
     </Link>
   )
 }

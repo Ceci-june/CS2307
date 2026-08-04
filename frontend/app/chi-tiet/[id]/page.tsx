@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import { PropertyDetailBreadcrumb } from '@/components/property-detail/breadcrumb'
@@ -11,6 +12,7 @@ import { QuickSpecsGrid } from '@/components/property-detail/quick-specs-grid'
 import { DescriptionSection } from '@/components/property-detail/description-section'
 import { AmenitiesSection } from '@/components/property-detail/amenities-section'
 import { LocationSection } from '@/components/property-detail/location-section'
+import { KnowledgeGraphSection } from '@/components/property-detail/knowledge-graph-section'
 import { SellerCard } from '@/components/property-detail/seller-card'
 import { ContactForm } from '@/components/property-detail/contact-form'
 import { SimilarProperties } from '@/components/property-detail/similar-properties'
@@ -25,6 +27,8 @@ interface PropertyData {
   price_range: string
   area: number | null
   address: string
+  location_link?: string | null
+  latitude_longitude?: string | null
   description: string
   images: string[]
   listing_type: string
@@ -63,32 +67,65 @@ interface PropertyData {
 }
 
 export default function PropertyDetailPage() {
+  const params = useParams<{ id: string }>()
+  const propertyId = params?.id
   const [property, setProperty] = useState<PropertyData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Read property data from sessionStorage
+    if (!propertyId) return
+
+    const controller = new AbortController()
+    let hasCachedProperty = false
+    setIsLoading(true)
+
+    // Use the card payload for an instant first paint, but always refresh from
+    // the backend so direct links and browser refreshes work as expected.
     const selectedProperty = sessionStorage.getItem('selectedProperty')
-    
     if (selectedProperty) {
       try {
-        const parsedProperty = JSON.parse(selectedProperty)
-        setProperty(parsedProperty)
+        const parsedProperty = JSON.parse(selectedProperty) as PropertyData
+        const cachedIds = [parsedProperty.id, parsedProperty.listing_id].filter(Boolean).map(String)
+        if (cachedIds.includes(String(propertyId))) {
+          setProperty(parsedProperty)
+          hasCachedProperty = true
+          setIsLoading(false)
+        }
       } catch (err) {
         console.error('Error parsing selected property:', err)
-        setProperty(null)
       }
-    } else {
-      setProperty(null)
     }
-    
-    setIsLoading(false)
-  }, [])
+
+    fetch(`/api/properties/${encodeURIComponent(propertyId)}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(payload.error || 'Failed to fetch property')
+        return payload
+      })
+      .then((payload) => {
+        if (!payload.data) throw new Error('Property not found')
+        setProperty(payload.data)
+        sessionStorage.setItem('selectedProperty', JSON.stringify(payload.data))
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        if (!hasCachedProperty) setProperty(null)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [propertyId])
 
   // Record a `view` on open and the accumulated dwell time on leave.
+  const propertyListingKey = property ? String(property.listing_id ?? property.id) : null
   useEffect(() => {
-    if (!property) return
-    const listingId = property.listing_id ?? property.id
+    if (!propertyListingKey) return
+    const listingId = propertyListingKey
     const openedAt = Date.now()
     sendInteraction({ listing_id: listingId, action_type: "view", source: "detail" })
     return () => {
@@ -100,7 +137,7 @@ export default function PropertyDetailPage() {
         dwell_time_seconds: dwell,
       })
     }
-  }, [property])
+  }, [propertyListingKey])
 
   if (isLoading) {
     return (
@@ -177,7 +214,14 @@ export default function PropertyDetailPage() {
               <AmenitiesSection property={property} />
 
               {/* Location Map Section */}
-              <LocationSection address={property.address} />
+              <LocationSection
+                address={property.address}
+                locationLink={property.location_link}
+                latitudeLongitude={property.latitude_longitude}
+              />
+
+              {/* Knowledge Graph Section */}
+              <KnowledgeGraphSection propertyId={String(propertyId || property.listing_id || property.id)} />
 
               {/* Similar Properties */}
               <SimilarProperties />

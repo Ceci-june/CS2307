@@ -41,6 +41,17 @@ class GraphSearchResponse:
     error: Optional[str] = None
 
 
+@dataclass
+class GraphSubgraphResponse:
+    """A small, UI-safe subgraph for one listing detail page."""
+
+    state: str
+    nodes: List[dict] = field(default_factory=list)
+    edges: List[dict] = field(default_factory=list)
+    amenity_categories: List[str] = field(default_factory=list)
+    error: Optional[str] = None
+
+
 class Neo4jGraphRepository:
     """Optional Neo4j retrieval source.
 
@@ -390,6 +401,255 @@ class Neo4jGraphRepository:
                 error=str(exc),
                 latency_ms=round((time.perf_counter() - started) * 1000, 2),
             )
+
+    @staticmethod
+    def _subgraph_query() -> str:
+        """Return only the relationship types that are meaningful to users.
+
+        The projection deliberately avoids returning Neo4j Node/Relationship
+        objects.  This keeps the API independent of the driver representation
+        and makes the later property whitelist explicit in Python.
+        """
+
+        return """
+            MATCH (l:Listing)
+            WHERE toString(l.listing_id) = $listing_id
+               OR l.listing_node_id = $listing_id
+            WITH l
+            LIMIT 1
+            OPTIONAL MATCH (l)-[r:IN_WARD|IN_FORMER_AREA|ON_STREET|NEAR_AMENITY]->(n)
+            RETURN {
+                id: l.listing_node_id,
+                type: 'Listing',
+                properties: {
+                    listing_id: toString(l.listing_id),
+                    listing_node_id: l.listing_node_id,
+                    title: l.title,
+                    property_type: l.property_type,
+                    price_range: l.price_range,
+                    area: l.area,
+                    bedrooms: l.bedrooms,
+                    bathrooms: l.bathrooms,
+                    address_new: l.address_new,
+                    address_old: l.address_old
+                }
+            } AS listing_node,
+            collect(CASE WHEN n IS NULL OR r IS NULL THEN null ELSE {
+                relationship_type: type(r),
+                target_id: CASE
+                    WHEN n:Amenity THEN n.amenity_id
+                    WHEN n:Ward THEN n.ward_id
+                    WHEN n:FormerAdminArea THEN n.former_area_id
+                    WHEN n:Street THEN n.street_id
+                    ELSE null
+                END,
+                target_type: CASE
+                    WHEN n:Amenity THEN 'Amenity'
+                    WHEN n:Ward THEN 'Ward'
+                    WHEN n:FormerAdminArea THEN 'FormerAdminArea'
+                    WHEN n:Street THEN 'Street'
+                    ELSE null
+                END,
+                target_label: CASE
+                    WHEN n:Amenity THEN n.name
+                    WHEN n:Ward THEN n.name
+                    WHEN n:FormerAdminArea THEN n.name
+                    WHEN n:Street THEN n.name
+                    ELSE null
+                END,
+                target_properties: CASE
+                    WHEN n:Amenity THEN {
+                        name: n.name,
+                        category: n.category,
+                        address: n.address
+                    }
+                    WHEN n:Ward THEN {
+                        name: n.name,
+                        ward_type: n.ward_type,
+                        city_province: n.city_province
+                    }
+                    WHEN n:FormerAdminArea THEN {
+                        name: n.name,
+                        area_type: n.area_type,
+                        former_city_province: n.former_city_province,
+                        old_address: n.old_address
+                    }
+                    WHEN n:Street THEN {
+                        name: n.name,
+                        city_province: n.city_province
+                    }
+                    ELSE {}
+                END,
+                relationship_properties: properties(r)
+            } END) AS connections
+        """
+
+    @staticmethod
+    def _namespace_node_id(node_type: str, raw_id: Any) -> str:
+        return f"{node_type.lower()}:{raw_id}"
+
+    @staticmethod
+    def _clean_properties(properties: Optional[dict], allowed: set[str]) -> dict:
+        if not isinstance(properties, dict):
+            return {}
+        return {
+            key: value
+            for key, value in properties.items()
+            if key in allowed
+        }
+
+    @staticmethod
+    def _edge_label(relationship_type: str, properties: dict) -> str:
+        if relationship_type != "NEAR_AMENITY":
+            return {
+                "IN_WARD": "Thuộc phường/xã",
+                "IN_FORMER_AREA": "Thuộc khu vực cũ",
+                "ON_STREET": "Nằm trên đường",
+            }.get(relationship_type, relationship_type)
+        distance = properties.get("driving_distance_km")
+        duration = properties.get("driving_duration_min")
+        if isinstance(distance, (int, float)) and isinstance(duration, (int, float)):
+            return f"{float(distance):.1f} km · {float(duration):.1f} phút"
+        if isinstance(distance, (int, float)):
+            return f"{float(distance):.1f} km"
+        return "Gần"
+
+    @classmethod
+    def _subgraph_from_record(cls, record: dict) -> GraphSubgraphResponse:
+        listing_node = record.get("listing_node")
+        if not isinstance(listing_node, dict) or not listing_node.get("id"):
+            return GraphSubgraphResponse(state="empty")
+
+        listing_raw_id = str(listing_node["id"])
+        listing_id = cls._namespace_node_id("Listing", listing_raw_id)
+        listing_properties = cls._clean_properties(
+            listing_node.get("properties"),
+            {
+                "listing_id", "listing_node_id", "title", "property_type",
+                "price_range", "area", "bedrooms", "bathrooms",
+                "address_new", "address_old",
+            },
+        )
+        nodes = [
+            {
+                "id": listing_id,
+                "type": "Listing",
+                "label": listing_properties.get("title") or "Bất động sản",
+                "properties": listing_properties,
+            }
+        ]
+        node_by_id = {listing_id: nodes[0]}
+        connections = record.get("connections") or []
+        amenity_candidates: dict[str, dict] = {}
+        regular_connections: list[dict] = []
+
+        allowed_node_properties = {
+            "Amenity": {"name", "category", "address"},
+            "Ward": {"name", "ward_type", "city_province"},
+            "FormerAdminArea": {"name", "area_type", "former_city_province", "old_address"},
+            "Street": {"name", "city_province"},
+        }
+        allowed_relationship_properties = {
+            "straight_line_km", "driving_distance_km", "driving_duration_min",
+            "threshold_km", "within_threshold",
+        }
+
+        for connection in connections:
+            if not isinstance(connection, dict):
+                continue
+            target_type = connection.get("target_type")
+            target_raw_id = connection.get("target_id")
+            relationship_type = connection.get("relationship_type")
+            if target_type not in allowed_node_properties or not target_raw_id or not relationship_type:
+                continue
+            target_id = cls._namespace_node_id(target_type, target_raw_id)
+            target_properties = cls._clean_properties(
+                connection.get("target_properties"),
+                allowed_node_properties[target_type],
+            )
+            raw_relationship_properties = connection.get("relationship_properties")
+            raw_relationship = raw_relationship_properties if isinstance(raw_relationship_properties, dict) else {}
+            relationship_properties = cls._clean_properties(
+                raw_relationship_properties,
+                allowed_relationship_properties,
+            )
+            target_node = {
+                "id": target_id,
+                "type": target_type,
+                "label": connection.get("target_label") or target_properties.get("name") or target_type,
+                "properties": target_properties,
+            }
+            edge = {
+                "id": f"{listing_id}|{relationship_type}|{target_id}",
+                "source": listing_id,
+                "target": target_id,
+                "type": relationship_type,
+                "label": cls._edge_label(relationship_type, relationship_properties),
+                "properties": relationship_properties,
+            }
+            if relationship_type == "NEAR_AMENITY":
+                category = target_properties.get("category") or "other"
+                current = amenity_candidates.get(category)
+                rank = raw_relationship.get("rank")
+                distance = raw_relationship.get("driving_distance_km")
+                is_nearest = raw_relationship.get("is_nearest") is True
+                sort_key = (
+                    0 if is_nearest else 1,
+                    distance if isinstance(distance, (int, float)) else 999999,
+                    rank if isinstance(rank, (int, float)) else 999999,
+                    target_id,
+                )
+                if current is None or sort_key < current["sort_key"]:
+                    amenity_candidates[category] = {
+                        "sort_key": sort_key,
+                        "node": target_node,
+                        "edge": edge,
+                    }
+            else:
+                regular_connections.append({"node": target_node, "edge": edge})
+
+        selected_connections = regular_connections + list(amenity_candidates.values())
+        edges = []
+        seen_edge_ids = set()
+        categories = []
+        for connection in selected_connections:
+            target_node = connection["node"]
+            edge = connection["edge"]
+            if edge["id"] in seen_edge_ids:
+                continue
+            seen_edge_ids.add(edge["id"])
+            if target_node["id"] not in node_by_id:
+                node_by_id[target_node["id"]] = target_node
+                nodes.append(target_node)
+            edges.append(edge)
+            if target_node["type"] == "Amenity":
+                category = target_node["properties"].get("category")
+                if category and category not in categories:
+                    categories.append(category)
+
+        return GraphSubgraphResponse(
+            state="ready",
+            nodes=nodes,
+            edges=edges,
+            amenity_categories=sorted(categories),
+        )
+
+    def subgraph(self, listing_id: str) -> GraphSubgraphResponse:
+        """Fetch a bounded, JSON-safe subgraph for a listing detail view."""
+
+        if not self.enabled:
+            return GraphSubgraphResponse(state="unavailable", error="disabled")
+        if not self._ensure_driver():
+            return GraphSubgraphResponse(state="unavailable", error="unavailable")
+        try:
+            with self._driver.session(database=self.database, default_access_mode="READ") as session:
+                record = session.run(self._subgraph_query(), {"listing_id": str(listing_id)}).single()
+            if record is None:
+                return GraphSubgraphResponse(state="empty")
+            return self._subgraph_from_record(dict(record))
+        except Exception as exc:
+            logger.warning(f"Neo4j listing subgraph unavailable: {exc}")
+            return GraphSubgraphResponse(state="unavailable", error=str(exc))
 
 
 graph_repository = Neo4jGraphRepository()

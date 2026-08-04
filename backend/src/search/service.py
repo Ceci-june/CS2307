@@ -201,7 +201,15 @@ class HybridSearchService:
     async def similar(self, listing_id: str, top_k: int = 10) -> dict:
         embedded_count, property_count = await run_in_threadpool(search_repository.embedding_coverage)
         vector_available = property_count > 0 and embedded_count == property_count
-        graph_task = run_in_threadpool(graph_repository.similar, listing_id, top_k)
+        # The detail page accepts both the PostgreSQL ``properties.id`` and the
+        # source ``listing_id``.  Neo4j only knows the latter, so resolve the
+        # identifier once before starting the graph traversal.  Without this
+        # normalization a URL such as /chi-tiet/236 would still get vector
+        # recommendations, but Neo4j would search for a non-existent listing
+        # node named "236" and return no shared graph evidence.
+        source_property = await run_in_threadpool(search_repository.get_property, listing_id)
+        graph_listing_id = str(source_property["listing_id"]) if source_property else str(listing_id)
+        graph_task = run_in_threadpool(graph_repository.similar, graph_listing_id, top_k)
         if vector_available:
             vector_task = run_in_threadpool(search_repository.similar, listing_id, top_k * 2)
             vector_items, graph_response = await asyncio.gather(vector_task, graph_task)
@@ -249,6 +257,23 @@ class HybridSearchService:
 
     async def get_property(self, property_id: str):
         return await run_in_threadpool(search_repository.get_property, property_id)
+
+    async def property_graph(self, property_id: str) -> dict | None:
+        """Resolve a property through PostgreSQL, then fetch its Neo4j subgraph."""
+
+        property_item = await run_in_threadpool(search_repository.get_property, property_id)
+        if property_item is None:
+            return None
+        listing_id = str(property_item.get("listing_id"))
+        graph = await run_in_threadpool(graph_repository.subgraph, listing_id)
+        return {
+            "property_id": str(property_item.get("id")),
+            "listing_id": listing_id,
+            "state": graph.state,
+            "nodes": graph.nodes,
+            "edges": graph.edges,
+            "amenity_categories": graph.amenity_categories,
+        }
 
 
 hybrid_search_service = HybridSearchService()
