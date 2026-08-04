@@ -27,8 +27,8 @@ docker compose up -d --build backend
 docker compose exec backend \
   python scripts/build_search_index.py --skip-embeddings
 
-# Downloads multilingual-e5-large once and resumes missing pgvector embeddings.
-docker compose exec -e SEARCH_ALLOW_MODEL_DOWNLOAD=true backend \
+# Generates missing pgvector embeddings through the configured embedding API.
+docker compose exec backend \
   python scripts/build_search_index.py --skip-catalog-import \
   --skip-graph-metadata --batch-size 32
 ```
@@ -39,29 +39,13 @@ reports embedding coverage when `debug=true`.
 
 ### Embedding provider
 
-The default is `SEARCH_EMBEDDING_PROVIDER=local` with
-`SEARCH_EMBEDDING_DEVICE=cpu`. To opt into local GPU detection, set the device to
-`auto` (CUDA, then Apple MPS, then CPU), or select `cuda`, `cuda:0`, or `mps`.
-If the requested GPU is unavailable or model transfer fails, embedding safely
-falls back to CPU.
-
-For an NVIDIA GPU exposed to Docker, apply the GPU override:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml \
-  --profile graph-search up -d --build backend
-```
-
-Apple MPS works when the backend/index script runs directly on macOS; Docker Desktop's
-Linux VM does not expose MPS. Search debug output includes `embedding_device` and
-`embedding_gpu`. Adjust `--batch-size` when building the index to fit GPU memory.
-
-LM Studio can be used instead of loading the embedding model in the backend. Load
-a 1024-dimensional embedding model in LM Studio, start its local server, then set:
+The backend uses an OpenAI-compatible embeddings API only; it does not download or
+load a Hugging Face model inside the API container. Configure a 1024-dimensional
+embedding model in LM Studio, OpenRouter, or another compatible server:
 
 ```dotenv
 SEARCH_EMBEDDING_PROVIDER=lmstudio
-SEARCH_EMBEDDING_MODEL=intfloat/multilingual-e5-large
+SEARCH_EMBEDDING_MODEL=qwen/qwen3-embedding-4b
 SEARCH_EMBEDDING_BASE_URL=http://127.0.0.1:1234/v1
 SEARCH_EMBEDDING_API_KEY=
 SEARCH_EMBEDDING_TIMEOUT=60
@@ -84,6 +68,17 @@ docker compose exec neo4j sh -lc \
   -f /opt/search-graph/import_search_graph.cypher'
 
 docker compose --profile graph-search up -d --build backend
+```
+
+The graph import uses the V2 address-mapping package. It is idempotent: existing
+listings are updated by `listing_node_id`, while former administrative-area nodes
+and relationships are merged without duplicating the original graph.
+
+For a remote Neo4j configured through `NEO4J_URI`, import the same package from
+the client instead of relying on server-side `LOAD CSV`:
+
+```bash
+docker compose run --rm --no-deps backend python scripts/import_neo4j_v2.py
 ```
 
 Use `debug=true` on `/v1/search` to inspect graph availability, candidate count and
@@ -213,8 +208,8 @@ Copy `.env.example` to `.env`. Key variables:
 | `BACKEND_LLM_API_KEY` | API key for an OpenAI-compatible endpoint |
 | `GEMINI_API_KEYS` | Gemini API key(s), comma-separated (Gemini only) |
 | `SEARCH_USE_LLM_ANSWER` | Generate the chat answer and per-listing insights from hybrid-search evidence |
-| `SEARCH_EMBEDDING_PROVIDER` | `local` (default) or `lmstudio` |
-| `SEARCH_EMBEDDING_DEVICE` | Local inference device; defaults to `cpu` |
+| `SEARCH_EMBEDDING_PROVIDER` | OpenAI-compatible embedding API mode (`lmstudio`) |
+| `SEARCH_EMBEDDING_MODEL` | Model name sent to the embedding API |
 | `SEARCH_EMBEDDING_BASE_URL` | LM Studio base URL, normally ending in `/v1` |
 | `HOST_DB` | `postgres` (Docker) or `localhost` (local dev) |
 | `MINIO_END_POINT` | `minio:9000` (Docker) or `localhost:9000` (local dev) |

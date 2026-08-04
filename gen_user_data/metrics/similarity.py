@@ -5,8 +5,7 @@ folder `similarity_metrics/` — torch_embedding_*_similarity.py). Repo triển 
 nhiều độ đo trên embedding: cosine, jaccard, euclidean, manhattan, pearson...
 Ở đây implement bằng numpy (không cần torch), giữ đúng công thức chuẩn.
 
-  * cosine / euclidean / manhattan / pearson: dùng cho vector embedding liên tục
-    (vd 768d của phobert trong embeddings.pkl).
+  * cosine / euclidean / manhattan / pearson: dùng cho vector embedding liên tục.
   * jaccard: dùng cho tập tính năng nhị phân (amenity/accessibility/view).
 
 Guide khuyến nghị Cosine + Jaccard là hai độ đo chính cho BĐS.

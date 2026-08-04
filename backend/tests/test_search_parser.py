@@ -21,6 +21,19 @@ class QueryParserTests(unittest.TestCase):
         self.assertEqual(parsed.amenity_filters[0].amenity_category, "metro")
         self.assertEqual(parsed.amenity_filters[0].max_driving_distance_km, 3)
 
+    def test_district_name_without_old_keyword_uses_former_area(self):
+        parsed = self.parser.parse("tôi muốn mua nàh quận 2")
+        self.assertEqual(parsed.hard_filters.districts, [])
+        self.assertEqual(parsed.hard_filters.former_admin_areas, ["Quận 2"])
+
+    def test_old_huyen_and_city_are_former_areas(self):
+        huyen = self.parser.parse("mua nhà huyện hóc môn")
+        city = self.parser.parse("căn hộ thành phố dĩ an")
+        self.assertEqual(huyen.hard_filters.districts, [])
+        self.assertEqual(huyen.hard_filters.former_admin_areas, ["Huyện Hoc Mon"])
+        self.assertEqual(city.hard_filters.districts, [])
+        self.assertEqual(city.hard_filters.former_admin_areas, ["Thành Phố Di An"])
+
     def test_units_and_required_feature(self):
         parsed = self.parser.parse("Nhà đất dưới 5000 triệu, diện tích trên 80 m2, phải có ban công")
         self.assertEqual(parsed.hard_filters.price.max, 5)

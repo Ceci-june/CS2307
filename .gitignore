@@ -44,5 +44,5 @@ gen_user_data/work_log.html
 gen_user_data/data/graph/
 gen_user_data/data/precomputed/
 
-# TS build cache
-frontend/*.tsbuildinfo
+=======
+gen_user_data/scratchpad/

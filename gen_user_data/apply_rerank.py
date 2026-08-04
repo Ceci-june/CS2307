@@ -22,8 +22,8 @@ from config import distribution_config as C
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
-RERANK_DIR = ("/private/tmp/claude-501/-Users-vy-Desktop-School-Tri-thuc---v2-CS2307/"
-              "44bfdff9-f7ac-4b85-8281-f5abaa0487ef/scratchpad/rerank")
+# Must match prep_rerank.py's OUT_DIR (same RERANK_DIR env var override).
+RERANK_DIR = os.environ.get("RERANK_DIR", os.path.join(HERE, "scratchpad", "rerank"))
 SEED = C.RANDOM_SEED + 7
 from datetime import datetime, timedelta, timezone
 _WIN = datetime(2026, 1, 1, tzinfo=timezone.utc)

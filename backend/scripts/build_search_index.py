@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Backfill PostgreSQL search_text, graph-derived metadata and E5 embeddings.
 
-Run from the backend directory:
-    SEARCH_ALLOW_MODEL_DOWNLOAD=true python scripts/build_search_index.py
+Run from the backend directory. Embeddings are requested from the configured
+OpenAI-compatible embedding endpoint.
 """
 from __future__ import annotations
 
@@ -224,7 +224,7 @@ def main():
         if not args.skip_catalog_import:
             import_properties(DATA_DIR / "Final_Data.csv")
         if not args.skip_graph_metadata:
-            import_graph_metadata(DATA_DIR / "real_estate_graph_ready")
+            import_graph_metadata(DATA_DIR / "real_estate_graph_ready_v2_address_mapping")
         backfill(args.batch_size, args.skip_embeddings, args.force)
     finally:
         postgres_client.stop()

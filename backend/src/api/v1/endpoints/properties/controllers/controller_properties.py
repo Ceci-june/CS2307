@@ -1,4 +1,3 @@
-import os
 from starlette import status
 
 
@@ -7,9 +6,7 @@ from src.api.v1.endpoints.properties.repositories.repo_properties import (
     repo_get_properties,
     repo_add_log,
 )
-from src.settings.event import recommendation_service, llm_model
-from src.services.llm.const.prompt import get_system_prompt, get_user_prompt
-from src.utils.functions import parse_json_llm_response
+from src.settings.event import recommendation_service
 
 
 class PropertiesController(BaseController):
@@ -242,80 +239,15 @@ class PropertiesController(BaseController):
                 )
                 return self.response(data=None, status_code=status.HTTP_400_BAD_REQUEST)
             
-            user_request = f"""
-            Giá tối thiểu: {min_price}
-            Giá tối đa: {max_price}
-            Diện tích tối thiểu: {min_area}
-            Diện tích tối đa: {max_area}
-            Số phòng ngủ: {bedrooms}
-            Số phòng tắm: {bathrooms}
-            Trạng thái pháp lý: {legal_status}
-            Tiện ích: {furniture}
-            Hướng nhà: {house_direction}
-            Hướng ban công: {balcony_direction}
-            Độ dài đường vào căn hộ: {length_road_entrance}
-            Quận: {district}
-            Có hồ bơi: {pool}
-            Có gym: {gym}
-            Có công viên: {park}
-            Có BBQ: {bbq}
-            Có playground cho trẻ em: {kids_playground}
-            Có sân thể thao: {sports_court}
-            Có bảo vệ 24/7: {security_24h}
-            Có reception: {reception}
-            Có thang máy: {elevator}
-            Có parking: {parking}
-            Gần metro: {near_metro}
-            Gần bus: {near_bus}
-            Gần đường cao tốc: {near_highway}
-            Gần trường học: {near_school}
-            Gần bệnh viện: {near_hospital}
-            Gần mall: {near_mall}
-            Gần chợ: {near_market}
-            Gần công viên: {near_park}
-            Có view sông: {river_view}
-            Có view công viên: {park_view}
-            Có view thành phố: {city_view}
-            Có ban công: {balcony}
-            Có sân vườn: {garden}
-            Có gara: {garage}
-            Có sân thể thao: {sports_court}
-            """
-            
-            is_success, data_llm, error = await llm_model.ask_llm(
-                system_prompt=get_system_prompt(),
-                user_prompt=get_user_prompt(user_request, data_response),
-            )
-            
             repo_add_log(
                 user_id=None,
                 action="ai_search",
-                content="Lấy kết quả từ AI",
+                content="Lấy kết quả từ embedding search",
                 metadata={
                     "data_response": data_response, 
-                    "data_llm": data_llm,
-                    "user_request": user_request,
-                    "error": error,
                 },
             )
-            if not is_success:
-                self.errors.append(
-                    {
-                        "loc": "PropertiesController -> ctr_ai_search",
-                        "msg": error,
-                        "detail": error,
-                    }
-                )
-                return self.response(data=None, status_code=status.HTTP_400_BAD_REQUEST)
-            data_llm = parse_json_llm_response(data_llm)
-            
-            data_res = []
-            for index, item in enumerate(data_response):
-                if index < len(data_llm):
-                    item["explanation"] = data_llm[index]["explanation"]
-                    item["comparison"] = data_llm[index]["comparison"]
-                data_res.append(item)
-            return self.response(data=data_res, status_code=status.HTTP_200_OK)
+            return self.response(data=data_response, status_code=status.HTTP_200_OK)
         except Exception as e:
             self.errors.append(
                 {

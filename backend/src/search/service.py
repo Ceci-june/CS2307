@@ -77,6 +77,8 @@ class HybridSearchService:
                 item["graph_evidence"] = {}
                 item["graph_matched"] = False
         total_candidates = await run_in_threadpool(search_repository.count, parsed)
+        if parsed.hard_filters.districts or parsed.hard_filters.former_admin_areas:
+            total_candidates = max(total_candidates, len(graph_by_listing))
         relaxations = []
         applied = parsed
 

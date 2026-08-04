@@ -7,8 +7,7 @@ QUAN TRỌNG: có 2 file trong Data/, KHÔNG tương đương nhau:
   * Data/Final_Data.csv  — bản đã qua ETL, cùng 3037 dòng, đổi tên field
     sang tiếng Anh (property_type, legal_status, furnishing, district...)
     và có sẵn 25 cột boolean (pool, gym, near_metro,...) — khớp CHÍNH XÁC
-    schema Postgres `properties` mà backend dùng (xem select_columns trong
-    backend/src/services/recommendation/recommendation_service.py) và
+    schema Postgres `properties` mà backend dùng và
     Listing.features trong gen_user_data/schemas.py.
 
   => Data/Final_Data.csv là nguồn ĐÚNG/canonical để lấy vocab cho LLM
