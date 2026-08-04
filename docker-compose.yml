@@ -84,7 +84,6 @@ services:
     volumes:
       - ./.env:/app/.env:ro
       - ./Data:/app/Data:ro
-      - huggingface_cache:/root/.cache/huggingface
     ports:
       - "8001:8000"
     depends_on:
@@ -102,4 +101,3 @@ volumes:
   minio_data:
   neo4j_data:
   neo4j_import:
-  huggingface_cache:
