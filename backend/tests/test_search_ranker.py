@@ -22,6 +22,32 @@ class RankerTests(unittest.TestCase):
         self.assertEqual(len([x for x in result if x["geo_cluster_150m"] == "same"]), 3)
         self.assertIn(99, [x["listing_id"] for x in result])
 
+    def test_location_is_a_ranking_signal_not_an_exclusion(self):
+        parsed = RuleBasedQueryParser().parse("căn hộ ở Phường An Khánh")
+        items = [
+            {"listing_id": 1, "district": "Phường Thới An", "semantic_score": .8},
+            {"listing_id": 2, "district": "Phường An Khánh", "semantic_score": .8},
+        ]
+        ranked = rank_candidates(items, parsed)
+        self.assertEqual(len(ranked), 2)
+        self.assertEqual(ranked[0]["listing_id"], 2)
+        self.assertEqual(ranked[0]["score_breakdown"]["location"], 1.0)
+        self.assertEqual(ranked[1]["score_breakdown"]["location"], 0.0)
+
+    def test_price_is_a_ranking_signal_not_an_exclusion(self):
+        parsed = RuleBasedQueryParser().parse("căn hộ khoảng 5 tỷ")
+        items = [
+            {"listing_id": 1, "price_range": 9, "semantic_score": .8},
+            {"listing_id": 2, "price_range": 5, "semantic_score": .8},
+        ]
+        ranked = rank_candidates(items, parsed)
+        self.assertEqual(len(ranked), 2)
+        self.assertEqual(ranked[0]["listing_id"], 2)
+        self.assertGreater(
+            ranked[0]["score_breakdown"]["target"],
+            ranked[1]["score_breakdown"]["target"],
+        )
+
     def test_no_profile_leaves_ranking_unchanged(self):
         parsed = RuleBasedQueryParser().parse("Căn hộ khoảng 5 tỷ")
         items = [{"listing_id": 1, "price_range": 5, "area": 70, "semantic_score": .9, "district": "Q7"}]

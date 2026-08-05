@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+import re
 from typing import Any, Dict, Iterable, List, Optional
 
+from src.search.normalizer import normalize_text
 from src.search.personalization import score_item as personalization_score
 from src.search.schemas import ParsedSearchQuery, RankingProfile
 
@@ -11,9 +13,7 @@ from src.search.schemas import ParsedSearchQuery, RankingProfile
 # personalization nudges rather than overrides the deterministic ranking.
 PERSONALIZATION_WEIGHT = 0.15
 
-# Graded falloff width for an approximate numeric target. Kept a touch wider than
-# the retrieval band (repository.PRICE_AREA_TOLERANCE = 0.15) so every listing that
-# survives the filter still scores positively, degrading smoothly toward the edge.
+# Graded falloff width for approximate numeric preferences inferred from chat.
 RANK_TARGET_TOLERANCE = 0.25
 
 
@@ -39,6 +39,24 @@ def range_fit(value, lower=None, upper=None, target=None) -> float:
         return 0.0
     if upper is not None and value > upper:
         return 0.0
+    if lower is None and upper is None:
+        return .5
+    return 1.0
+
+
+def soft_range_fit(value, lower=None, upper=None, target=None) -> float:
+    """Graded fit for chat preferences; values outside a bound are not excluded."""
+    if value is None:
+        return 0.0
+    value = float(value)
+    if target is not None:
+        return range_fit(value, target=target)
+    if lower is not None and value < lower:
+        falloff = max(abs(float(lower)) * .5, 1.0)
+        return max(0.0, 1 - (float(lower) - value) / falloff)
+    if upper is not None and value > upper:
+        falloff = max(abs(float(upper)) * .5, 1.0)
+        return max(0.0, 1 - (value - float(upper)) / falloff)
     if lower is None and upper is None:
         return .5
     return 1.0
@@ -70,7 +88,13 @@ def quality_score(item: dict) -> float:
 
 
 def _feature_score(item: dict, parsed: ParsedSearchQuery) -> float:
-    weighted_features = {feature: 1.0 for feature in parsed.hard_filters.required_features}
+    weighted_features = {
+        feature: 1.0
+        for feature in (
+            *parsed.hard_filters.required_features,
+            *parsed.preference_filters.required_features,
+        )
+    }
     for preference in parsed.soft_preferences:
         if preference.type == "feature" and preference.value:
             weighted_features[preference.value] = max(
@@ -80,6 +104,64 @@ def _feature_score(item: dict, parsed: ParsedSearchQuery) -> float:
         return .5
     total_weight = sum(weighted_features.values())
     return sum(weight * bool(item.get(feature)) for feature, weight in weighted_features.items()) / total_weight
+
+
+def _has_range(rng) -> bool:
+    return any(getattr(rng, field) is not None for field in ("min", "max", "target"))
+
+
+def _criteria_score(item: dict, parsed: ParsedSearchQuery) -> float:
+    """Score structured chat criteria without using them as retrieval filters."""
+    preferred = parsed.preference_filters
+    scores = []
+    for item_key, rng in (
+        ("price_range", preferred.price),
+        ("area", preferred.area),
+        ("bedrooms", preferred.bedrooms),
+        ("bathrooms", preferred.bathrooms),
+    ):
+        if _has_range(rng):
+            scores.append(soft_range_fit(item.get(item_key), rng.min, rng.max, rng.target))
+
+    categorical = (
+        ("property_type", preferred.property_types),
+        ("legal_status", preferred.legal_statuses),
+        ("furnishing", preferred.furnishings),
+        ("house_direction", preferred.house_directions),
+        ("balcony_direction", preferred.balcony_directions),
+    )
+    for key, requested in categorical:
+        if requested:
+            actual = normalize_text(str(item.get(key) or ""))
+            scores.append(float(actual in {normalize_text(value) for value in requested}))
+
+    if preferred.excluded_property_types:
+        actual = normalize_text(str(item.get("property_type") or ""))
+        excluded = {normalize_text(value) for value in preferred.excluded_property_types}
+        scores.append(float(actual not in excluded))
+    return sum(scores) / len(scores) if scores else .5
+
+
+def _location_terms(values) -> set[str]:
+    terms = set()
+    for value in values:
+        if value in (None, ""):
+            continue
+        normalized = normalize_text(str(value))
+        if not normalized:
+            continue
+        terms.add(normalized)
+        terms.add(re.sub(r"^(?:phuong|xa|quan|huyen|thi xa|thanh pho|tp)\s+", "", normalized))
+    return {term for term in terms if term}
+
+
+def _location_score(item: dict, parsed: ParsedSearchQuery) -> float:
+    preferred = parsed.preference_filters
+    requested = _location_terms((*preferred.districts, *preferred.former_admin_areas))
+    if not requested:
+        return .5
+    actual = _location_terms((item.get("district"), item.get("former_admin_area")))
+    return float(bool(requested & actual))
 
 
 def _amenity_score(item: dict, parsed: ParsedSearchQuery) -> float:
@@ -115,14 +197,10 @@ def rank_candidates(
         text_score = max(0.0, min(1.0, float(item.get("text_score") or 0.0)))
         semantic = max(semantic, text_score * .85)
         graph = max(0.0, min(1.0, float(item.get("graph_score", 0.5))))
-        price_range = parsed.hard_filters.price
-        area_range = parsed.hard_filters.area
-        price = range_fit(item.get("price_range"), price_range.min, price_range.max, price_range.target)
-        area = range_fit(item.get("area"), area_range.min, area_range.max, area_range.target)
-        target = (price + area) / 2
+        target = _criteria_score(item, parsed)
         features = _feature_score(item, parsed)
         amenity = _amenity_score(item, parsed)
-        location = 1.0 if (parsed.hard_filters.districts or parsed.hard_filters.former_admin_areas) else .5
+        location = _location_score(item, parsed)
         freshness = freshness_score(item.get("posted_date") or item.get("created_at"))
         quality = quality_score(item)
         breakdown = {"semantic": semantic, "graph": graph, "amenity": amenity, "features": features, "location": location, "target": target, "freshness": freshness, "quality": quality}

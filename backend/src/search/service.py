@@ -26,7 +26,9 @@ class HybridSearchService:
         self.llm_answer = LLMSearchAnswerGenerator(llm_model)
 
     async def parse(self, query: str, top_k: int = 20, filters: Dict[str, Any] | None = None) -> ParsedSearchQuery:
-        deterministic = self.rule_parser.parse(query, top_k=top_k, explicit_filters=filters)
+        # Parse natural language without UI filters so the LLM can never mistake
+        # their source. Only the explicit filter payload is strict.
+        deterministic = self.rule_parser.parse(query, top_k=top_k)
         parsed = await self.llm_parser.parse(query, deterministic)
         # Explicit UI/API filters have the highest priority, including over an LLM
         # location correction.
@@ -83,55 +85,10 @@ class HybridSearchService:
         total_candidates = await run_in_threadpool(search_repository.count, parsed)
         if parsed.hard_filters.districts or parsed.hard_filters.former_admin_areas:
             total_candidates = max(total_candidates, len(graph_by_listing))
-        relaxations = []
+        # Natural-language criteria are already soft, while explicit UI filters
+        # must remain strict. There is therefore no automatic constraint widening.
+        relaxations: list[str] = []
         applied = parsed
-
-        if not candidates and parsed.amenity_filters and not parsed.protected_constraints:
-            for distance_factor, duration_factor in ((1.5, 1.25), (2.0, 1.5)):
-                trial = parsed.model_copy(deep=True)
-                changes = []
-                for original, amenity in zip(parsed.amenity_filters, trial.amenity_filters):
-                    if original.max_driving_distance_km is not None:
-                        amenity.max_driving_distance_km = round(original.max_driving_distance_km * distance_factor, 2)
-                        changes.append(
-                            f"Mở rộng {amenity.amenity_category} từ {original.max_driving_distance_km:g} km "
-                            f"lên {amenity.max_driving_distance_km:g} km"
-                        )
-                    if original.max_duration_min is not None:
-                        amenity.max_duration_min = round(original.max_duration_min * duration_factor, 1)
-                        changes.append(
-                            f"Mở rộng thời gian tới {amenity.amenity_category} từ {original.max_duration_min:g} "
-                            f"lên {amenity.max_duration_min:g} phút"
-                        )
-                trial_candidates = await run_in_threadpool(
-                    search_repository.search, trial, query_embedding, candidate_limit
-                )
-                if trial_candidates:
-                    applied = trial
-                    candidates = trial_candidates
-                    total_candidates = await run_in_threadpool(search_repository.count, applied)
-                    relaxations = changes
-                    break
-
-        # If a fuzzy price/area band leaves no candidates, widen it (±30%) and then
-        # drop it entirely, so an approximate number never returns an empty result.
-        price = applied.hard_filters.price
-        area = applied.hard_filters.area
-        has_fuzzy_target = (
-            (price.target is not None and price.min is None and price.max is None)
-            or (area.target is not None and area.min is None and area.max is None)
-        )
-        if not candidates and has_fuzzy_target and not parsed.protected_constraints:
-            for tolerance in (0.30, None):
-                trial_candidates = await run_in_threadpool(
-                    search_repository.search, applied, query_embedding, candidate_limit, tolerance
-                )
-                if trial_candidates:
-                    candidates = trial_candidates
-                    total_candidates = await run_in_threadpool(search_repository.count, applied, tolerance)
-                    band = "±30%" if tolerance is not None else "bỏ giới hạn giá/diện tích"
-                    relaxations.append(f"Nới lỏng khoảng giá/diện tích ({band})")
-                    break
 
         user_profile = None
         if user_id is not None:

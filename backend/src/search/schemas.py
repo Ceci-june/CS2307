@@ -88,7 +88,12 @@ class HardFilters(BaseModel):
 
 class ParsedSearchQuery(BaseModel):
     intent: str = "property_search"
+    # Only filters supplied through the UI/API filter payload belong here. These
+    # are applied in repository WHERE clauses and are therefore strict.
     hard_filters: HardFilters = Field(default_factory=HardFilters)
+    # Constraints inferred from free-form text belong here. They influence
+    # ranking but never remove a candidate during retrieval.
+    preference_filters: HardFilters = Field(default_factory=HardFilters)
     amenity_filters: List[AmenityDistanceFilter] = Field(default_factory=list)
     soft_preferences: List[SoftPreference] = Field(default_factory=list)
     semantic_query: str = ""
@@ -116,4 +121,3 @@ class ParseRequest(BaseModel):
 
 class SimilarRequest(BaseModel):
     top_k: int = Field(default=10, ge=1, le=50)
-
