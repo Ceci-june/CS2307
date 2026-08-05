@@ -7,8 +7,9 @@ Neo4j relationship retrieval, evidence-based reranking and deterministic explana
 ## Hybrid search V1
 
 PostgreSQL remains the source of truth while Neo4j is an optional online candidate
-and evidence source. Vietnamese natural-language queries are parsed into validated
-hard filters, amenity-distance constraints and semantic preferences. PostgreSQL
+and evidence source. Vietnamese natural-language queries are parsed into weighted
+structured and semantic preferences; only the separate UI filter payload creates
+hard constraints. PostgreSQL
 FTS/pgvector candidates and Neo4j traversal candidates are merged before deterministic
 reranking. Search falls back to PostgreSQL when Neo4j is unavailable.
 
@@ -114,6 +115,23 @@ database before running it; downgrading the initial revision removes its tables.
 
 Revisions are written explicitly because the project currently uses SQL queries
 without declarative ORM models. See `backend/migrations/README.md` for details.
+
+## LangGraph chat agents
+
+`POST /v1/chat` uses a LangGraph supervisor to keep ordinary conversation and
+general real-estate Q&A separate from property consultation. Only the consultant
+agent has access to the native `search_properties` and
+`inspect_previous_recommendations` tools, so greetings do not invoke hybrid
+search. Authenticated conversations use PostgreSQL LangGraph checkpoints in
+addition to the existing visible conversation history; guest conversations keep
+their bounded context in the browser tab.
+
+The configured OpenAI-compatible endpoint must return standard Chat Completions
+`tool_calls`. Verify it after changing model/server configuration:
+
+```bash
+docker compose run --rm --no-deps backend python scripts/verify_tool_calling.py
+```
 
 ## Architecture
 

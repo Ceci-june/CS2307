@@ -27,19 +27,23 @@ MUST_WORDS = ("bat buoc", "phai co", "chi lay", "khong vuot qua", "khong qua")
 
 
 class RuleBasedQueryParser:
-    """Deterministic Vietnamese parser. LLM output may enrich, never bypass, this schema."""
+    """Deterministic Vietnamese parser.
+
+    Free-form query criteria are preferences. Only ``explicit_filters`` are
+    promoted to strict repository filters.
+    """
 
     def parse(self, query: str, top_k: int = 20, explicit_filters: Optional[Dict[str, Any]] = None) -> ParsedSearchQuery:
         normalized = normalize_text(query)
-        hard = HardFilters()
+        preferences = HardFilters()
         protected = [word for word in MUST_WORDS if word in normalized]
 
-        self._parse_price(normalized, hard)
-        self._parse_area(normalized, hard)
-        self._parse_rooms(normalized, hard)
-        self._parse_property_types(normalized, hard)
-        self._parse_locations(query, normalized, hard)
-        self._parse_legal_furnishing(normalized, hard)
+        self._parse_price(normalized, preferences)
+        self._parse_area(normalized, preferences)
+        self._parse_rooms(normalized, preferences)
+        self._parse_property_types(normalized, preferences)
+        self._parse_locations(query, normalized, preferences)
+        self._parse_legal_furnishing(normalized, preferences)
 
         required_features = []
         soft_preferences = []
@@ -48,14 +52,15 @@ class RuleBasedQueryParser:
             is_required = any(f"{must} {alias}" in normalized for must in MUST_WORDS for alias in aliases)
             if is_required:
                 required_features.append(feature)
-            else:
-                soft_preferences.append(SoftPreference(type="feature", value=feature, weight=0.7))
-        hard.required_features = sorted(set(required_features))
+            soft_preferences.append(
+                SoftPreference(type="feature", value=feature, weight=1.0 if is_required else 0.7)
+            )
+        preferences.required_features = sorted(set(required_features))
 
         amenity_filters = self._parse_amenity_distances(normalized)
         profile = self._ranking_profile(normalized)
         parsed = ParsedSearchQuery(
-            hard_filters=hard,
+            preference_filters=preferences,
             amenity_filters=amenity_filters,
             soft_preferences=soft_preferences,
             semantic_query=query.strip(),
@@ -186,7 +191,9 @@ class RuleBasedQueryParser:
                     continue
                 value = float(match.group(1).replace(",", "."))
                 unit = match.group(2)
-                kwargs = {"amenity_category": category, "required": True}
+                # A distance mentioned in chat is a weighted preference. Strict
+                # amenity booleans still come from the explicit filter payload.
+                kwargs = {"amenity_category": category, "required": False}
                 if unit == "phut":
                     kwargs["max_duration_min"] = value
                 else:
@@ -256,12 +263,14 @@ class LLMQueryParser:
             "Parse the Vietnamese real-estate query into JSON matching the schema below.\n"
             "Rules:\n"
             "- Return JSON only. Do not generate SQL and do not infer constraints not stated by the user.\n"
-            "- Extract every explicit hard constraint; use null or [] only when it is absent.\n"
+            "- Every constraint inferred from the free-form query is a weighted preference, "
+            "never a hard filter. Put it in preference_filters; use null or [] when absent.\n"
+            "- Leave hard_filters empty. That field is reserved for filters selected in the UI/API.\n"
             "- Prices use billion VND: 1 ty = 1, 1000 trieu = 1. Preserve min/max/target meaning.\n"
             "- Areas use m2. Bedroom and bathroom values are integer ranges.\n"
             "- Extract only location names, excluding trailing price, amenity, and preference phrases.\n"
-            "- Put current Phuong/Xa units in hard_filters.districts. Put former Quan/Huyen/"
-            "Thanh Pho units in hard_filters.former_admin_areas. Preserve Vietnamese diacritics.\n"
+            "- Put current Phuong/Xa units in preference_filters.districts. Put former Quan/Huyen/"
+            "Thanh Pho units in preference_filters.former_admin_areas. Preserve Vietnamese diacritics.\n"
             "- Use amenity_filters only for a named amenity with an explicit distance or duration. "
             "Represent general wishes such as 'nhieu tien ich' as soft_preferences.\n"
             "- Keep semantic_query faithful to the original query and select the most appropriate "
@@ -279,11 +288,21 @@ class LLMQueryParser:
             parsed = ParsedSearchQuery.model_validate_json(raw.strip().removeprefix("```json").removesuffix("```").strip())
             # The LLM is primary. Deterministic parsing only fills values it omitted,
             # and remains the full fallback when the LLM call or validation fails.
-            parsed.hard_filters = self._fill_missing_hard_filters(
-                parsed.hard_filters, fallback.hard_filters
+            # Be defensive with models still following the previous prompt: any
+            # inferred hard fields are demoted before deterministic gap filling.
+            parsed.preference_filters = self._fill_missing_filters(
+                parsed.preference_filters, parsed.hard_filters
             )
+            parsed.preference_filters = self._fill_missing_filters(
+                parsed.preference_filters, fallback.preference_filters
+            )
+            parsed.hard_filters = HardFilters()
             if not parsed.amenity_filters:
                 parsed.amenity_filters = fallback.amenity_filters
+            # The parser only sees free-form text, so an LLM cannot promote an
+            # inferred amenity distance into an EXISTS constraint either.
+            for amenity in parsed.amenity_filters:
+                amenity.required = False
             if not parsed.soft_preferences:
                 parsed.soft_preferences = fallback.soft_preferences
             if not parsed.semantic_query.strip():
@@ -301,7 +320,7 @@ class LLMQueryParser:
             return fallback
 
     @staticmethod
-    def _fill_missing_hard_filters(primary: HardFilters, fallback: HardFilters) -> HardFilters:
+    def _fill_missing_filters(primary: HardFilters, fallback: HardFilters) -> HardFilters:
         merged = primary.model_copy(deep=True)
         for field in ("price", "area", "bedrooms", "bathrooms"):
             target_range = getattr(merged, field)

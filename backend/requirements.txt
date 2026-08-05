@@ -1,10 +1,10 @@
 numpy
 fastapi==0.108.0
-pydantic==2.5.2
+pydantic==2.13.4
 python-dotenv==1.0.0
 loguru==0.7.2
 unidecode==1.3.7
-orjson==3.9.10
+orjson==3.11.5
 uvicorn==0.25.0
 python-multipart==0.0.6
 gunicorn==21.2.0
@@ -22,7 +22,7 @@ requests
 aiohttp
 pillow
 sqlparse==0.5.1
-openai==1.55.3
+openai==2.47.0
 firebase_admin==6.6.0
 sse-starlette==2.1.3
 python-slugify
@@ -42,6 +42,15 @@ fastcore==1.8.4
 llms-txt==0.0.4
 google-genai==1.24.0
 google-generativeai==0.8.5
+
+# LangGraph chat orchestration.  These are pinned together because the graph,
+# OpenAI-compatible model adapter, and PostgreSQL checkpoint schema evolve in
+# lockstep.
+langgraph==1.2.9
+langchain==1.3.14
+langchain-openai==1.4.0
+langgraph-checkpoint-postgres==3.1.0
+psycopg[binary,pool]
 
 # Crawler
 playwright==1.53.0

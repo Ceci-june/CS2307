@@ -48,27 +48,45 @@ def add_message(
     content: Optional[str],
     results: Optional[Any] = None,
     parsed_query: Optional[Any] = None,
+    agent_metadata: Optional[Any] = None,
 ) -> dict:
     rows = postgres_client.fetch_write(
-        "INSERT INTO messages (conversation_id, role, content, results, parsed_query) "
+        "INSERT INTO messages (conversation_id, role, content, results, parsed_query, agent_metadata) "
         "VALUES (:conversation_id, :role, :content, "
-        "CAST(:results AS jsonb), CAST(:parsed_query AS jsonb)) "
-        "RETURNING id, role, content, results, parsed_query, created_at",
+        "CAST(:results AS jsonb), CAST(:parsed_query AS jsonb), CAST(:agent_metadata AS jsonb)) "
+        "RETURNING id, role, content, results, parsed_query, agent_metadata, created_at",
         conversation_id=conversation_id,
         role=role,
         content=content,
         results=json.dumps(results, ensure_ascii=False, default=str) if results is not None else None,
         parsed_query=json.dumps(parsed_query, ensure_ascii=False, default=str) if parsed_query is not None else None,
+        agent_metadata=json.dumps(agent_metadata, ensure_ascii=False, default=str)
+        if agent_metadata is not None
+        else "{}",
     )
     return rows[0]
 
 
 def get_messages(conversation_id: int) -> List[dict]:
     return postgres_client.fetch_mappings(
-        "SELECT id, role, content, results, parsed_query, created_at FROM messages "
+        "SELECT id, role, content, results, parsed_query, agent_metadata, created_at FROM messages "
         "WHERE conversation_id = :conversation_id ORDER BY created_at ASC, id ASC",
         conversation_id=conversation_id,
     )
+
+
+def get_recent_messages(conversation_id: int, limit: int = 20) -> List[dict]:
+    """Return the newest messages in chronological order for bounded agent context."""
+    rows = postgres_client.fetch_mappings(
+        "SELECT id, role, content, results, parsed_query, agent_metadata, created_at FROM "
+        "(SELECT id, role, content, results, parsed_query, agent_metadata, created_at "
+        "FROM messages WHERE conversation_id = :conversation_id "
+        "ORDER BY created_at DESC, id DESC LIMIT :limit) recent "
+        "ORDER BY created_at ASC, id ASC",
+        conversation_id=conversation_id,
+        limit=limit,
+    )
+    return rows
 
 
 def touch_conversation(conversation_id: int, title: Optional[str] = None) -> None:

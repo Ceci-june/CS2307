@@ -16,9 +16,9 @@ class GraphSearchTests(unittest.TestCase):
         )
         query, params = Neo4jGraphRepository._query(parsed)
         self.assertIn("NEAR_AMENITY", query)
-        self.assertIn("coalesce(l.balcony, false) = true", query)
-        self.assertEqual(params["amenity_category_0"], "metro")
-        self.assertEqual(params["amenity_distance_0"], 3)
+        self.assertNotIn("coalesce(l.balcony, false) = true", query)
+        self.assertEqual(params["amenity_categories"], ["metro"])
+        self.assertNotIn("amenity_distance_0", params)
         self.assertIn("khong qua", parsed.protected_constraints)
 
     def test_near_feature_is_backed_by_graph_category(self):
@@ -36,7 +36,9 @@ class GraphSearchTests(unittest.TestCase):
         self.assertEqual(candidate["graph_score"], 1.0)
 
     def test_former_area_filter_uses_v2_relationship(self):
-        parsed = self.parser.parse("tôi muốn mua nàh quận 2")
+        parsed = self.parser.parse("tôi muốn mua nhà", explicit_filters={"district": "Quận 2"})
+        parsed.hard_filters.former_admin_areas = parsed.hard_filters.districts
+        parsed.hard_filters.districts = []
         query, params = Neo4jGraphRepository._query(parsed)
         self.assertIn("IN_FORMER_AREA", query)
         self.assertIn("FormerAdminArea", query)
@@ -44,18 +46,37 @@ class GraphSearchTests(unittest.TestCase):
         self.assertIn("any(alias IN", query)
 
     def test_graph_validated_location_does_not_get_filtered_again_in_postgres(self):
-        parsed = self.parser.parse("mua nhà huyện hóc môn")
+        parsed = self.parser.parse("mua nhà", explicit_filters={"district": "Xã Hóc Môn"})
         where, params = SearchRepository()._where(parsed, graph_validated=True)
         self.assertNotIn("district_values", params)
         self.assertNotIn("former_admin_area_values", params)
         self.assertFalse(any("former_admin_area" in clause for clause in where))
 
     def test_current_ward_search_includes_prefix_free_normalized_alias(self):
-        parsed = self.parser.parse("mua nhà phường an khánh")
+        parsed = self.parser.parse("mua nhà", explicit_filters={"district": "Phường An Khánh"})
         query, params = Neo4jGraphRepository._query(parsed)
         self.assertIn("IN_WARD", query)
         self.assertIn("phuong an khanh", params["location_terms"])
         self.assertIn("an khanh", params["location_terms"])
+
+    def test_natural_language_location_and_price_do_not_enter_where_clause(self):
+        parsed = self.parser.parse("căn hộ khoảng 5 tỷ ở phường an khánh")
+        where, params = SearchRepository()._where(parsed)
+        self.assertNotIn("price_min", params)
+        self.assertNotIn("price_max", params)
+        self.assertNotIn("district_values", params)
+        self.assertFalse(any("p.district" in clause for clause in where))
+
+    def test_explicit_filter_location_and_price_remain_strict(self):
+        parsed = self.parser.parse(
+            "tìm căn hộ",
+            explicit_filters={"max_price": 5, "district": "Phường An Khánh"},
+        )
+        where, params = SearchRepository()._where(parsed)
+        self.assertEqual(params["price_max"], 5)
+        self.assertEqual(params["district_values"], ["phường an khánh"])
+        self.assertTrue(any("p.price_range <=" in clause for clause in where))
+        self.assertTrue(any("p.district" in clause for clause in where))
 
     def test_listing_subgraph_query_is_parameterized(self):
         query = Neo4jGraphRepository._subgraph_query()

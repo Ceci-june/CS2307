@@ -59,6 +59,8 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [conversationId, setConversationId] = useState<number | null>(null)
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
+  const [guestContextListingIds, setGuestContextListingIds] = useState<string[]>([])
+  const [guestContextParsedQuery, setGuestContextParsedQuery] = useState<any>(null)
   const currentFilters = propFilters
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -80,6 +82,8 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
     else {
       setConversations([])
       setConversationId(null)
+      setGuestContextListingIds([])
+      setGuestContextParsedQuery(null)
     }
   }, [user, loadConversations])
 
@@ -90,6 +94,8 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
 
   const startNewChat = () => {
     setConversationId(null)
+    setGuestContextListingIds([])
+    setGuestContextParsedQuery(null)
     setMessages([{ ...WELCOME, timestamp: nowTime() }])
   }
 
@@ -114,20 +120,31 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
   const applyResponse = (data: any) => {
     const properties: PropertyResult[] = data.data?.results || []
     const assistantAnswer = data.data?.assistant_answer
+    const searchPerformed = Boolean(data.data?.search_performed)
     setMessages((prev) => {
       const updated = [...prev]
       updated[updated.length - 1] = {
         role: "ai",
         content:
-          properties.length > 0
-            ? assistantAnswer || "Dựa trên yêu cầu của bạn, tôi tìm thấy các bất động sản sau:"
-            : "Xin lỗi, tôi không tìm thấy bất động sản nào phù hợp với yêu cầu của bạn. Vui lòng thử thay đổi tiêu chí tìm kiếm.",
-        properties: properties.length > 0 ? properties : undefined,
+          assistantAnswer || "Tôi chưa thể trả lời ngay lúc này. Bạn thử diễn đạt lại giúp tôi nhé.",
+        properties: searchPerformed && properties.length > 0 ? properties : undefined,
         timestamp: nowTime(),
       }
       return updated
     })
     if (data.data?.conversation_id) setConversationId(data.data.conversation_id)
+    // Guest context is a list of server-issued IDs only. The backend rehydrates
+    // those IDs rather than trusting listing fields sent from the browser.
+    if (!user && properties.length > 0) {
+      setGuestContextListingIds(
+        properties
+          .map((property) => property.listing_id)
+          .filter((id) => id !== undefined && id !== null)
+          .slice(0, 20)
+          .map(String),
+      )
+      if (data.data?.parsed_query) setGuestContextParsedQuery(data.data.parsed_query)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,22 +152,31 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
     if (!inputValue.trim()) return
 
     const userQuestion = inputValue
+    const guestHistory = messages
+      .filter((item) => item.content && !(item.role === "ai" && item.content === WELCOME.content))
+      .slice(-20)
+      .map((item) => ({ role: item.role === "ai" ? "assistant" : "user", content: item.content! }))
     setMessages((prev) => [
       ...prev,
       { role: "user", content: userQuestion, timestamp: nowTime() },
-      { role: "ai", content: "Đang tìm kiếm...", timestamp: nowTime() },
+      { role: "ai", content: "Đang xử lý...", timestamp: nowTime() },
     ])
     setInputValue("")
     setIsLoading(true)
 
     try {
-      // Logged-in users get persisted, multi-turn chat; others use stateless search.
-      const endpoint = user ? "/api/chat" : "/api/search"
       const payload = user
         ? { message: userQuestion, conversation_id: conversationId, top_k: 3, filters: currentFilters }
-        : { query: userQuestion, top_k: 3, page: 1, filters: currentFilters }
+        : {
+            message: userQuestion,
+            top_k: 3,
+            filters: currentFilters,
+            history: guestHistory,
+            context_listing_ids: guestContextListingIds,
+            context_parsed_query: guestContextParsedQuery,
+          }
 
-      const response = await fetch(endpoint, {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify(payload),
@@ -164,7 +190,7 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
         const updated = [...prev]
         updated[updated.length - 1] = {
           role: "ai",
-          content: "Xin lỗi, đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau.",
+          content: "Xin lỗi, đã xảy ra lỗi khi xử lý tin nhắn. Vui lòng thử lại sau.",
           timestamp: nowTime(),
         }
         return updated

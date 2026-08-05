@@ -33,6 +33,19 @@ GRAPH_FEATURE_CATEGORIES = {
 }
 
 
+def _location_terms(values) -> set[str]:
+    terms = set()
+    for value in values:
+        if not value:
+            continue
+        normalized = normalize_text(str(value))
+        terms.add(normalized)
+        terms.add(
+            re.sub(r"^(?:phuong|xa|quan|huyen|thi xa|thanh pho|tp)\s+", "", normalized)
+        )
+    return {term for term in terms if term}
+
+
 @dataclass
 class GraphSearchResponse:
     available: bool
@@ -218,6 +231,7 @@ class Neo4jGraphRepository:
 
         requested_features = {
             *hard.required_features,
+            *parsed.preference_filters.required_features,
             *(pref.value for pref in parsed.soft_preferences if pref.type == "feature" and pref.value),
         }
         preference_features = sorted(
@@ -268,6 +282,7 @@ class Neo4jGraphRepository:
     def _score_record(record: dict, parsed: ParsedSearchQuery) -> dict:
         requested_features = {
             *parsed.hard_filters.required_features,
+            *parsed.preference_filters.required_features,
             *(pref.value for pref in parsed.soft_preferences if pref.type == "feature" and pref.value),
         }
         matched_features = set(record.get("matched_features") or [])
@@ -301,8 +316,14 @@ class Neo4jGraphRepository:
                 amenity_scores.append(best)
             components.append(sum(amenity_scores) / len(amenity_scores))
 
-        if parsed.hard_filters.districts or parsed.hard_filters.former_admin_areas:
-            components.append(1.0)
+        preferred_locations = _location_terms(
+            (*parsed.preference_filters.districts, *parsed.preference_filters.former_admin_areas)
+        )
+        if preferred_locations:
+            actual_locations = _location_terms(
+                (*(record.get("wards") or []), record.get("former_admin_area"))
+            )
+            components.append(float(bool(preferred_locations & actual_locations)))
         graph_score = sum(components) / len(components) if components else 0.5
         return {
             "listing_id": str(record["listing_id"]),

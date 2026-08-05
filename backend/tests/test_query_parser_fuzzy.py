@@ -9,10 +9,10 @@ class FuzzyPriceParsingTests(unittest.TestCase):
         self.parser = RuleBasedQueryParser()
 
     def _price(self, query):
-        return self.parser.parse(query).hard_filters.price
+        return self.parser.parse(query).preference_filters.price
 
     def _area(self, query):
-        return self.parser.parse(query).hard_filters.area
+        return self.parser.parse(query).preference_filters.area
 
     def test_bare_price_becomes_target(self):
         price = self._price("Căn hộ 5 tỷ ở quận 7")
@@ -57,7 +57,7 @@ class FuzzyPriceParsingTests(unittest.TestCase):
 
 class BandTranslationTests(unittest.TestCase):
     def _price(self, query):
-        return RuleBasedQueryParser().parse(query).hard_filters.price
+        return RuleBasedQueryParser().parse(query).preference_filters.price
 
     def test_target_expands_to_band(self):
         lower, upper = numeric_bounds(self._price("Căn hộ 5 tỷ"), DEFAULT_NUMERIC_TOLERANCE)
