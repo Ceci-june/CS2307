@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Send, Bot, User, Loader2, Sparkles, Plus, MessageSquare, ThumbsUp, ThumbsDown } from "lucide-react"
+import ReactMarkdown, { type Components } from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PropertyCard } from "@/components/property-card"
@@ -50,6 +52,71 @@ function formatTime(value?: string) {
   return isNaN(date.getTime())
     ? nowTime()
     : date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+}
+
+const markdownComponents: Components = {
+  a: ({ children, ...props }) => (
+    <a
+      {...props}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-[#C9342A] underline underline-offset-2 hover:text-[#A92A22]"
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children, ...props }) => (
+    <blockquote {...props} className="border-l-2 border-[#E03C31]/50 pl-3 italic text-muted-foreground">
+      {children}
+    </blockquote>
+  ),
+  code: ({ children, className, ...props }) => {
+    const isBlock = className?.startsWith("language-")
+    return (
+      <code
+        {...props}
+        className={
+          isBlock
+            ? `${className} block min-w-max text-xs`
+            : "rounded bg-background/80 px-1 py-0.5 font-mono text-[0.85em]"
+        }
+      >
+        {children}
+      </code>
+    )
+  },
+  pre: ({ children, ...props }) => (
+    <pre {...props} className="overflow-x-auto rounded-lg bg-background p-3 font-mono text-xs">
+      {children}
+    </pre>
+  ),
+  table: ({ children, ...props }) => (
+    <div className="overflow-x-auto">
+      <table {...props} className="w-full border-collapse text-left text-xs">
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children, ...props }) => (
+    <th {...props} className="border border-border bg-background/70 px-2 py-1.5 font-semibold">
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }) => (
+    <td {...props} className="border border-border px-2 py-1.5 align-top">
+      {children}
+    </td>
+  ),
+}
+
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <div className="text-sm leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_h1]:my-3 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-base [&_h2]:font-bold [&_h3]:my-2 [&_h3]:font-semibold [&_hr]:my-3 [&_hr]:border-border [&_li]:my-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
 }
 
 export function AIChat({ filters: propFilters = {} }: AIChatProps) {
@@ -270,7 +337,11 @@ export function AIChat({ filters: propFilters = {} }: AIChatProps) {
                     : "bg-muted text-foreground rounded-tl-sm"
                 }`}
               >
-                <p className="text-sm leading-relaxed">{message.content}</p>
+                {message.role === "ai" ? (
+                  <MarkdownMessage content={message.content || ""} />
+                ) : (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
+                )}
               </div>
 
               {/* Properties Grid */}

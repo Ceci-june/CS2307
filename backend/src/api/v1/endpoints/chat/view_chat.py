@@ -142,10 +142,6 @@ async def chat(
         "conversation_id": conversation_id,
         "query": data.message,
         **result,
-        # Compatibility flags retained for old callers; the graph finalizer now
-        # owns the natural-language answer instead of LLMSearchAnswerGenerator.
-        "llm_answer_enabled": False,
-        "llm_answer_generated": False,
     }
     return {"data": payload, "errors": [], "status": "success"}
 

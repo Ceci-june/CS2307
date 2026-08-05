@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from src.services.agent.chat_graph import ChatAgentService, _fallback_route
+from src.services.agent.chat_graph import ChatAgentService, _fallback_route, _has_meaningful_filters
 
 
 class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
@@ -24,6 +24,23 @@ class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
         decision = _fallback_route("Tư vấn giúp tôi mua nhà")
         self.assertEqual(decision.mode, "consult")
         self.assertTrue(decision.needs_clarification)
+
+    def test_meaningful_ui_filters_ignore_empty_default_values(self):
+        self.assertFalse(_has_meaningful_filters({"min_price": 0, "district": "", "pool": False}))
+        self.assertTrue(_has_meaningful_filters({"min_price": 0, "district": "Quận 7"}))
+
+    async def test_ui_filters_satisfy_supervisor_clarification(self):
+        with patch.object(
+            self.service,
+            "_route",
+            new=AsyncMock(return_value=_fallback_route("Tư vấn giúp tôi mua nhà")),
+        ):
+            update = await self.service._supervisor(
+                {"messages": [HumanMessage(content="Tư vấn giúp tôi mua nhà")], "filters": {"district": "Quận 7"}}
+            )
+
+        self.assertEqual(update["mode"], "consult")
+        self.assertFalse(update["needs_clarification"])
 
     async def test_supervisor_uses_json_mode_without_tool_choice(self):
         class FakeRouter:
@@ -94,14 +111,19 @@ class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
         }
         search_result = {
             "results": [{"listing_id": 123, "title": "Căn hộ kiểm thử", "explanation": "Phù hợp."}],
-            "parsed_query": {"intent": "property_search"},
+            "parsed_query": {
+                "intent": "property_search",
+                "hard_filters": {"districts": ["Quận 7"], "property_types": ["Căn hộ"]},
+            },
             "total_candidates": 1,
             "relaxations": [],
+            "llm_answer_enabled": True,
+            "llm_answer_generated": True,
         }
         with patch(
             "src.services.agent.chat_graph.hybrid_search_service.search",
             new=AsyncMock(return_value=search_result),
-        ):
+        ) as search_mock:
             command = await self.service._search_properties_impl(
                 "căn hộ Quận 7 dưới 5 tỷ",
                 SimpleNamespace(state=state, tool_call_id="call-search"),
@@ -111,7 +133,12 @@ class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(update["search_performed"])
         self.assertEqual(update["tool_name"], "search_properties")
         self.assertEqual(update["latest_results"][0]["listing_id"], 123)
+        self.assertTrue(update["llm_answer_enabled"])
+        self.assertTrue(update["llm_answer_generated"])
+        self.assertTrue(search_mock.await_args.kwargs["generate_llm_answer"])
         self.assertIsInstance(update["messages"][0], ToolMessage)
+        observation = update["messages"][0].content
+        self.assertIn('"applied_filters":{"districts":["Quận 7"]', observation)
 
     async def test_greeting_runs_chat_branch_without_constructing_tools(self):
         class FakeRouter:
