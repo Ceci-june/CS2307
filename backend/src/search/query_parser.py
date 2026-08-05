@@ -244,7 +244,7 @@ class RuleBasedQueryParser:
 
 
 class LLMQueryParser:
-    """Optional schema-constrained enrichment. Disabled by default for deterministic serving."""
+    """Optional schema-constrained primary parser with deterministic gap filling."""
 
     def __init__(self, llm_model):
         self.llm_model = llm_model
@@ -253,8 +253,19 @@ class LLMQueryParser:
         if os.getenv("SEARCH_USE_LLM_PARSER", "false").lower() not in {"1", "true", "yes"}:
             return fallback
         prompt = (
-            "Parse the Vietnamese real-estate query into JSON matching this schema. "
-            "Do not generate SQL. Preserve hard constraints. JSON only.\nSchema:\n"
+            "Parse the Vietnamese real-estate query into JSON matching the schema below.\n"
+            "Rules:\n"
+            "- Return JSON only. Do not generate SQL and do not infer constraints not stated by the user.\n"
+            "- Extract every explicit hard constraint; use null or [] only when it is absent.\n"
+            "- Prices use billion VND: 1 ty = 1, 1000 trieu = 1. Preserve min/max/target meaning.\n"
+            "- Areas use m2. Bedroom and bathroom values are integer ranges.\n"
+            "- Extract only location names, excluding trailing price, amenity, and preference phrases.\n"
+            "- Put current Phuong/Xa units in hard_filters.districts. Put former Quan/Huyen/"
+            "Thanh Pho units in hard_filters.former_admin_areas. Preserve Vietnamese diacritics.\n"
+            "- Use amenity_filters only for a named amenity with an explicit distance or duration. "
+            "Represent general wishes such as 'nhieu tien ich' as soft_preferences.\n"
+            "- Keep semantic_query faithful to the original query and select the most appropriate "
+            "ranking_profile.\nSchema:\n"
             + json.dumps(ParsedSearchQuery.model_json_schema(), ensure_ascii=False)
             + "\nQuery:\n" + query
         )
@@ -266,10 +277,51 @@ class LLMQueryParser:
             return fallback
         try:
             parsed = ParsedSearchQuery.model_validate_json(raw.strip().removeprefix("```json").removesuffix("```").strip())
-            # Deterministic constraints win over LLM output.
-            parsed.hard_filters = fallback.hard_filters
-            parsed.amenity_filters = fallback.amenity_filters
+            # The LLM is primary. Deterministic parsing only fills values it omitted,
+            # and remains the full fallback when the LLM call or validation fails.
+            parsed.hard_filters = self._fill_missing_hard_filters(
+                parsed.hard_filters, fallback.hard_filters
+            )
+            if not parsed.amenity_filters:
+                parsed.amenity_filters = fallback.amenity_filters
+            if not parsed.soft_preferences:
+                parsed.soft_preferences = fallback.soft_preferences
+            if not parsed.semantic_query.strip():
+                parsed.semantic_query = fallback.semantic_query
+            if not parsed.negative_preferences:
+                parsed.negative_preferences = fallback.negative_preferences
+            if "ranking_profile" not in parsed.model_fields_set:
+                parsed.ranking_profile = fallback.ranking_profile
+            # Request pagination and protected deterministic phrases are system-owned,
+            # not fields the language model may change.
+            parsed.top_k = fallback.top_k
             parsed.protected_constraints = fallback.protected_constraints
             return parsed
         except Exception:
             return fallback
+
+    @staticmethod
+    def _fill_missing_hard_filters(primary: HardFilters, fallback: HardFilters) -> HardFilters:
+        merged = primary.model_copy(deep=True)
+        for field in ("price", "area", "bedrooms", "bathrooms"):
+            target_range = getattr(merged, field)
+            fallback_range = getattr(fallback, field)
+            for bound in ("min", "max", "target"):
+                if getattr(target_range, bound) is None:
+                    setattr(target_range, bound, getattr(fallback_range, bound))
+
+        for field in (
+            "property_types",
+            "excluded_property_types",
+            "districts",
+            "former_admin_areas",
+            "legal_statuses",
+            "furnishings",
+            "house_directions",
+            "balcony_directions",
+            "required_features",
+            "excluded_features",
+        ):
+            if not getattr(merged, field):
+                setattr(merged, field, list(getattr(fallback, field)))
+        return merged

@@ -27,7 +27,11 @@ class HybridSearchService:
 
     async def parse(self, query: str, top_k: int = 20, filters: Dict[str, Any] | None = None) -> ParsedSearchQuery:
         deterministic = self.rule_parser.parse(query, top_k=top_k, explicit_filters=filters)
-        return await self.llm_parser.parse(query, deterministic)
+        parsed = await self.llm_parser.parse(query, deterministic)
+        # Explicit UI/API filters have the highest priority, including over an LLM
+        # location correction.
+        self.rule_parser.apply_explicit_filters(parsed, filters or {})
+        return parsed
 
     async def search(
         self,
