@@ -16,13 +16,14 @@ DATA_DIR = os.path.join(HERE, "data")
 # Override with RERANK_DIR env var if you want the batch/out files elsewhere
 # (e.g. a Claude Code scratchpad); defaults to a repo-local, gitignored folder
 # so the workflow runs the same on any machine after `git pull`.
-OUT_DIR = os.environ.get("RERANK_DIR", os.path.join(HERE, "scratchpad", "rerank"))
+VER = os.environ.get("RERANK_VERSION", "v2")   # "v2" | "v3"
+OUT_DIR = os.environ.get("RERANK_DIR", os.path.join(HERE, "scratchpad", f"rerank_{VER}"))
 BATCH = 30
 
 
 def main():
-    events = json.load(open(os.path.join(DATA_DIR, "recommendation_events_v2.json"), encoding="utf-8"))
-    users = {u["user_id"]: u for u in json.load(open(os.path.join(DATA_DIR, "users_v2.json"), encoding="utf-8"))}
+    events = json.load(open(os.path.join(DATA_DIR, f"recommendation_events_{VER}.json"), encoding="utf-8"))
+    users = {u["user_id"]: u for u in json.load(open(os.path.join(DATA_DIR, f"users_{VER}.json"), encoding="utf-8"))}
     listings = {l["listing_id"]: l for l in json.load(open(os.path.join(DATA_DIR, "listings.json"), encoding="utf-8"))}
 
     records = []

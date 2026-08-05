@@ -29,6 +29,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 EMBEDDINGS_PKL = os.path.join(REPO_ROOT, "backend", "src", "data", "embeddings.pkl")
 FINAL_DATA_CSV = os.path.join(REPO_ROOT, "Data", "Final_Data.csv")
+GRAPH_READY_CSV = os.path.join(
+    REPO_ROOT, "Data", "real_estate_graph_ready_v2_address_mapping",
+    "Final_Data_graph_ready_filtered.csv")
 DATA_DIR = os.path.join(HERE, "data")
 LISTINGS_PATH = os.path.join(DATA_DIR, "listings.json")
 
@@ -46,6 +49,25 @@ def _budget_group(price: float) -> str:
     if price <= _MID_MAX:
         return "mid_range"
     return "luxury"
+
+
+def _geo_lookup() -> dict:
+    """listing_id -> (geohash_6, geohash_7, geo_cluster_150m). File graph-ready có
+    thể có nhiều dòng cùng listing_id -> giữ dòng đầu. {} nếu thiếu file."""
+    import pandas as pd
+    if not os.path.exists(GRAPH_READY_CSV):
+        return {}
+    df = pd.read_csv(GRAPH_READY_CSV,
+                     usecols=["listing_id", "geohash_6", "geohash_7", "geo_cluster_150m"])
+    df = df.drop_duplicates(subset="listing_id")
+    out = {}
+    for r in df.itertuples(index=False):
+        out[int(r.listing_id)] = (
+            None if pd.isna(r.geohash_6) else str(r.geohash_6),
+            None if pd.isna(r.geohash_7) else str(r.geohash_7),
+            None if pd.isna(r.geo_cluster_150m) else str(r.geo_cluster_150m),
+        )
+    return out
 
 
 def _embeddings_ids() -> set:
@@ -67,6 +89,9 @@ def build_catalog(seed: int = C.RANDOM_SEED, limit: int | None = None) -> List[L
     df = pd.read_csv(FINAL_DATA_CSV)
     df = df.drop_duplicates(subset="listing_id")
 
+    # join vùng địa lý (geohash/geo_cluster) từ file graph-ready (nếu có)
+    geo = _geo_lookup()
+
     emb_ids = _embeddings_ids()
     if emb_ids:
         df = df[df["listing_id"].astype(int).isin(emb_ids)]
@@ -74,6 +99,15 @@ def build_catalog(seed: int = C.RANDOM_SEED, limit: int | None = None) -> List[L
     # dọn kiểu
     df["area_num"] = pd.to_numeric(df["area"], errors="coerce")
     area_default = float(df["area_num"].median())
+
+    def _parse_latlon(s):
+        # định dạng "q=<lat>,<lon>"
+        try:
+            s = str(s).split("=", 1)[-1]
+            lat, lon = s.split(",")
+            return round(float(lat), 6), round(float(lon), 6)
+        except Exception:
+            return None, None
 
     listings: List[Listing] = []
     for _, r in df.iterrows():
@@ -88,6 +122,8 @@ def build_catalog(seed: int = C.RANDOM_SEED, limit: int | None = None) -> List[L
             features[f] = bool(int(v)) if not pd.isna(v) else False
 
         title = str(r["title"]) if not pd.isna(r.get("title")) else f"BĐS {r['listing_id']}"
+        lat, lon = _parse_latlon(r.get("latitude_longitude"))
+        gh6, gh7, gcl = geo.get(int(r["listing_id"]), (None, None, None))
         listings.append(
             Listing(
                 listing_id=int(r["listing_id"]),
@@ -96,6 +132,8 @@ def build_catalog(seed: int = C.RANDOM_SEED, limit: int | None = None) -> List[L
                 district=str(r["district"]),
                 address=str(r["address"]) if not pd.isna(r.get("address")) else None,
                 city_province=str(r["city_province"]) if not pd.isna(r.get("city_province")) else None,
+                latitude=lat, longitude=lon,
+                geohash_6=gh6, geohash_7=gh7, geo_cluster_150m=gcl,
                 price_billion=round(price, 3),
                 area_sqm=round(area, 1),
                 bedrooms=max(0, beds),

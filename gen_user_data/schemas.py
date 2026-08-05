@@ -43,6 +43,13 @@ class Listing(BaseModel):
     district: str                          # phường/xã SAU sáp nhập (từ Final_Data.csv)
     address: Optional[str] = None          # địa chỉ thật đầy đủ
     city_province: Optional[str] = None
+    latitude: Optional[float] = None       # toạ độ thật
+    longitude: Optional[float] = None
+    # Vùng địa lý (từ Final_Data_graph_ready_filtered.csv) — dùng cho backfill
+    # ground truth theo cụm gần: geo_cluster_150m (~150m) < geohash_7 < geohash_6.
+    geohash_6: Optional[str] = None
+    geohash_7: Optional[str] = None
+    geo_cluster_150m: Optional[str] = None
     price_billion: float = Field(..., ge=0)
     area_sqm: float = Field(..., gt=0)
     bedrooms: int = Field(..., ge=0)

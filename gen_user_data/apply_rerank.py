@@ -23,7 +23,8 @@ from config import distribution_config as C
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
 # Must match prep_rerank.py's OUT_DIR (same RERANK_DIR env var override).
-RERANK_DIR = os.environ.get("RERANK_DIR", os.path.join(HERE, "scratchpad", "rerank"))
+VER = os.environ.get("RERANK_VERSION", "v2")   # "v2" | "v3"
+RERANK_DIR = os.environ.get("RERANK_DIR", os.path.join(HERE, "scratchpad", f"rerank_{VER}"))
 SEED = C.RANDOM_SEED + 7
 from datetime import datetime, timedelta, timezone
 _WIN = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -56,7 +57,7 @@ def _implicit(action, dwell):
 
 
 def main():
-    events = json.load(open(os.path.join(DATA_DIR, "recommendation_events_v2.json"), encoding="utf-8"))
+    events = json.load(open(os.path.join(DATA_DIR, f"recommendation_events_{VER}.json"), encoding="utf-8"))
     picks = _load_picks()
     if not picks:
         print("[apply] CHƯA có out_*.json — workflow xong chưa? Dừng.")
@@ -88,7 +89,7 @@ def main():
                     "explanation": str(it.get("explanation", "")).strip(),
                     "comparison": (str(it["comparison"]).strip() if it.get("comparison") else None),
                     "model_name": "claude-agent-rerank"} for it in clean}
-                ev["algorithm_version"] = "claude_rerank_v2"
+                ev["algorithm_version"] = f"claude_rerank_{VER}"
                 shown = [it["listing_id"] for it in clean]
                 applied += 1
         if shown is None:
@@ -128,8 +129,8 @@ def main():
     _ = [V2.RecommendationEvent(**e) for e in events]
     _ = [V2.Interaction(**it) for it in new_interactions]
 
-    ev_out = os.path.join(DATA_DIR, "recommendation_events_v2_claude.json")
-    it_out = os.path.join(DATA_DIR, "interactions_v2_claude.json")
+    ev_out = os.path.join(DATA_DIR, f"recommendation_events_{VER}_claude.json")
+    it_out = os.path.join(DATA_DIR, f"interactions_{VER}_claude.json")
     json.dump(events, open(ev_out, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     json.dump(new_interactions, open(it_out, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 

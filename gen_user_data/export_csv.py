@@ -152,9 +152,8 @@ def export_segment_affinity() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-# --- v2: users_v2.json (nested -> phẳng) ------------------------------------
-def export_users_v2() -> pd.DataFrame:
-    path = os.path.join(DATA_DIR, "users_v2.json")
+# --- users_v2/v3.json (nested -> phẳng) -------------------------------------
+def export_users_profile(path) -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
     rows = []
@@ -188,9 +187,8 @@ def export_users_v2() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-# --- v2: recommendation_events_v2_claude.json (long: 1 dòng / recommended item) ---
-def export_recommendation_events_claude() -> pd.DataFrame:
-    path = os.path.join(DATA_DIR, "recommendation_events_v2_claude.json")
+# --- recommendation_events_*_claude.json (long: 1 dòng / recommended item) ---
+def export_events_claude(path) -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
     rows = []
@@ -222,8 +220,16 @@ def export_recommendation_events_claude() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def export_interactions_claude(path) -> pd.DataFrame:
+    """interactions_*_claude.json (đã phẳng: có result_set_id, rank_position...)."""
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    return pd.DataFrame(_read_path(path))
+
+
 def main():
     os.makedirs(CSV_DIR, exist_ok=True)
+    D = lambda name: os.path.join(DATA_DIR, name)  # noqa: E731
     # (tên file, hàm, bắt buộc?) — không bắt buộc thì thiếu nguồn sẽ bỏ qua
     exporters = [
         ("users.csv", export_users, True),
@@ -236,8 +242,14 @@ def main():
         ("popularity.csv", export_popularity, False),
         ("query_expansion.csv", export_query_expansion, False),
         ("segment_affinity.csv", export_segment_affinity, False),
-        ("users_v2.csv", export_users_v2, False),
-        ("recommendation_events_v2_claude.csv", export_recommendation_events_claude, False),
+        # v2
+        ("users_v2.csv", lambda: export_users_profile(D("users_v2.json")), False),
+        ("recommendation_events_v2_claude.csv", lambda: export_events_claude(D("recommendation_events_v2_claude.json")), False),
+        # v3 (ward-tiered + Claude rerank)
+        ("users_v3.csv", lambda: export_users_profile(D("users_v3.json")), False),
+        ("recommendation_events_v3.csv", lambda: export_events_claude(D("recommendation_events_v3.json")), False),
+        ("recommendation_events_v3_claude.csv", lambda: export_events_claude(D("recommendation_events_v3_claude.json")), False),
+        ("interactions_v3_claude.csv", lambda: export_interactions_claude(D("interactions_v3_claude.json")), False),
     ]
     for fname, fn, required in exporters:
         df = fn()
