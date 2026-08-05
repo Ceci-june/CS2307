@@ -359,10 +359,19 @@ class Neo4jGraphRepository:
             WITH candidate,
                  count(DISTINCT shared) AS shared_count,
                  collect(DISTINCT CASE
-                     WHEN shared:Ward THEN {type: 'ward', name: shared.name}
-                     WHEN shared:Street THEN {type: 'street', name: shared.name}
-                     WHEN shared:GeoCluster THEN {type: 'geo_cluster', name: shared.cluster_id}
-                     WHEN shared:Amenity THEN {type: 'amenity', name: shared.name, category: shared.category}
+                     WHEN shared:Ward THEN {
+                         type: 'ward', id: shared.ward_id, name: shared.name
+                     }
+                     WHEN shared:Street THEN {
+                         type: 'street', id: shared.street_id, name: shared.name
+                     }
+                     WHEN shared:GeoCluster THEN {
+                         type: 'geo_cluster', id: shared.cluster_id, name: shared.cluster_id
+                     }
+                     WHEN shared:Amenity THEN {
+                         type: 'amenity', id: shared.amenity_id,
+                         name: shared.name, category: shared.category
+                     }
                  END) AS shared_evidence
             RETURN toString(candidate.listing_id) AS listing_id,
                    candidate.listing_node_id AS listing_node_id,
