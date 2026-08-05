@@ -7,8 +7,9 @@ Neo4j relationship retrieval, evidence-based reranking and deterministic explana
 ## Hybrid search V1
 
 PostgreSQL remains the source of truth while Neo4j is an optional online candidate
-and evidence source. Vietnamese natural-language queries are parsed into validated
-hard filters, amenity-distance constraints and semantic preferences. PostgreSQL
+and evidence source. Vietnamese natural-language queries are parsed into weighted
+structured and semantic preferences; only the separate UI filter payload creates
+hard constraints. PostgreSQL
 FTS/pgvector candidates and Neo4j traversal candidates are merged before deterministic
 reranking. Search falls back to PostgreSQL when Neo4j is unavailable.
 

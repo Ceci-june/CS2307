@@ -7,7 +7,9 @@ from src.search.schemas import ParsedSearchQuery
 
 def build_evidence(item: dict, parsed: ParsedSearchQuery) -> dict:
     matched: List[str] = []
+    preference_notes: List[str] = []
     hard = parsed.hard_filters
+    preferred = parsed.preference_filters
     if hard.price.max is not None:
         matched.append(f"Giá {item.get('price_range')} tỷ, không vượt ngân sách {hard.price.max:g} tỷ")
     if hard.price.min is not None:
@@ -18,6 +20,24 @@ def build_evidence(item: dict, parsed: ParsedSearchQuery) -> dict:
         matched.append(f"Có {item.get('bedrooms')} phòng ngủ")
     if hard.districts:
         matched.append(f"Thuộc {item.get('district')}")
+    if preferred.price.target is not None:
+        preference_notes.append(
+            f"Giá {item.get('price_range')} tỷ so với mức mong muốn {preferred.price.target:g} tỷ"
+        )
+    elif preferred.price.max is not None:
+        preference_notes.append(
+            f"Giá {item.get('price_range')} tỷ so với ngân sách mong muốn {preferred.price.max:g} tỷ"
+        )
+    if preferred.area.target is not None or preferred.area.min is not None:
+        desired = preferred.area.target if preferred.area.target is not None else preferred.area.min
+        preference_notes.append(f"Diện tích {item.get('area')} m² so với mong muốn {desired:g} m²")
+    if preferred.districts or preferred.former_admin_areas:
+        actual = item.get("district") or item.get("former_admin_area")
+        requested = ", ".join((*preferred.districts, *preferred.former_admin_areas))
+        if item.get("score_breakdown", {}).get("location") == 1.0:
+            preference_notes.append(f"Đúng khu vực ưu tiên: {actual}")
+        else:
+            preference_notes.append(f"Ngoài khu vực ưu tiên {requested}: {actual}")
     for feature in hard.required_features:
         if item.get(feature):
             matched.append(f"Có tiện ích {feature}")
@@ -41,12 +61,22 @@ def build_evidence(item: dict, parsed: ParsedSearchQuery) -> dict:
     score = item.get("score_breakdown", {}).get("semantic", 0)
     if score > .5:
         semantic.append(f"Nội dung tin phù hợp ngữ nghĩa truy vấn (điểm {score:.2f})")
-    return {"matched_constraints": matched, "amenity_evidence": graph_evidence, "semantic_evidence": semantic}
+    return {
+        "matched_constraints": matched,
+        "preference_evidence": preference_notes,
+        "amenity_evidence": graph_evidence,
+        "semantic_evidence": semantic,
+    }
 
 
 def attach_explanation(item: dict, parsed: ParsedSearchQuery) -> dict:
     evidence = build_evidence(item, parsed)
-    facts = evidence["matched_constraints"] + evidence["amenity_evidence"] + evidence["semantic_evidence"]
+    facts = (
+        evidence["matched_constraints"]
+        + evidence["preference_evidence"]
+        + evidence["amenity_evidence"]
+        + evidence["semantic_evidence"]
+    )
     item["matched_criteria"] = evidence["matched_constraints"]
     item["evidence"] = evidence
     item["explanation"] = ". ".join(facts[:5]) + ("." if facts else "")
