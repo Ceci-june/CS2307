@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/auth-context"
 import { getSavedListingIds, setSavedListing } from "@/lib/feedback"
+import { getPropertyImageSrc, PROPERTY_IMAGE_FALLBACK } from "@/lib/property-images"
 import { cn } from "@/lib/utils"
 
 interface PropertyCardProps {
@@ -27,8 +28,6 @@ interface PropertyCardProps {
   }
   variant?: "list" | "compact"
 }
-
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop"
 
 const getBadgeStyle = (listingType?: string | null) => {
   if (listingType === "VIP Kim Cương") {
@@ -60,8 +59,8 @@ const formatPrice = (price?: string | number | null) => {
 }
 
 export function PropertyCard({ property, variant = "list" }: PropertyCardProps) {
-  const hasPropertyImage = Boolean(property.images?.[0])
-  const imageUrl = property.images?.[0] || DEFAULT_IMAGE
+  const hasPropertyImage = Boolean(property.images?.[0]?.trim())
+  const imageUrl = getPropertyImageSrc(property.images?.[0])
   const badgeStyle = getBadgeStyle(property.listing_type)
   const { user } = useAuth()
   const [saved, setSaved] = useState(false)
@@ -108,7 +107,7 @@ export function PropertyCard({ property, variant = "list" }: PropertyCardProps) 
             )}
           >
             <Image
-              src={imageFailed ? DEFAULT_IMAGE : imageUrl}
+              src={imageFailed ? PROPERTY_IMAGE_FALLBACK : imageUrl}
               alt={property.title || "Hình ảnh bất động sản"}
               fill
               className="object-cover"

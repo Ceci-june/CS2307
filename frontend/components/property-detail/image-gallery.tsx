@@ -4,16 +4,18 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getPropertyImageSrc, PROPERTY_IMAGE_FALLBACK } from '@/lib/property-images'
 
 interface ImageGalleryProps {
   images: string[]
   title: string
 }
 
-const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop'
-
 export function ImageGallery({ images, title }: ImageGalleryProps) {
-  const imageList = images?.length > 0 ? images : [DEFAULT_IMAGE]
+  const propertyImages = (images || [])
+    .filter((image) => Boolean(image?.trim()))
+    .map(getPropertyImageSrc)
+  const imageList = propertyImages.length > 0 ? propertyImages : [PROPERTY_IMAGE_FALLBACK]
   const [mainImageIndex, setMainImageIndex] = useState(0)
 
   const goToPrevious = () => {
@@ -36,7 +38,7 @@ export function ImageGallery({ images, title }: ImageGalleryProps) {
           priority
           onError={(e) => {
             const img = e.target as HTMLImageElement
-            img.src = DEFAULT_IMAGE
+            img.src = PROPERTY_IMAGE_FALLBACK
           }}
         />
 
@@ -86,7 +88,7 @@ export function ImageGallery({ images, title }: ImageGalleryProps) {
                 className="object-cover"
                 onError={(e) => {
                   const img = e.target as HTMLImageElement
-                  img.src = DEFAULT_IMAGE
+                  img.src = PROPERTY_IMAGE_FALLBACK
                 }}
               />
             </button>

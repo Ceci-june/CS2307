@@ -23,7 +23,7 @@ def insert_interaction(
         "(user_id, session_id, listing_id, action_type, source, dwell_time_seconds, "
         " implicit_score, raw_query, conversation_id) "
         "VALUES (:user_id, :session_id, :listing_id, :action_type, :source, "
-        " :dwell_time_seconds, :implicit_score, :raw_query, :conversation_id) "
+        " :dwell_time_seconds, :implicit_score, :interaction_raw_query, :conversation_id) "
         "RETURNING id, created_at",
         user_id=user_id,
         session_id=session_id,
@@ -32,7 +32,7 @@ def insert_interaction(
         source=source,
         dwell_time_seconds=dwell_time_seconds,
         implicit_score=implicit_score,
-        raw_query=raw_query,
+        interaction_raw_query=raw_query,
         conversation_id=conversation_id,
     )
     return rows[0]
