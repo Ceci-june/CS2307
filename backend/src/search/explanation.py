@@ -51,12 +51,19 @@ def build_evidence(item: dict, parsed: ParsedSearchQuery) -> dict:
     for evidence in neo4j_evidence.get("amenities") or []:
         distance = evidence.get("driving_distance_km")
         if distance is not None:
+            amenity = " ".join(
+                part
+                for part in (
+                    str(evidence.get("category") or "").strip(),
+                    str(evidence.get("name") or "").strip(),
+                )
+                if part
+            ) or "tiện ích"
             graph_evidence.append(
-                f"Neo4j xác nhận {evidence.get('category')} {evidence.get('name') or ''} "
-                f"cách {float(distance):.1f} km".strip()
+                f"Gần {amenity}, khoảng {float(distance):.1f} km"
             )
     for ward in neo4j_evidence.get("wards") or []:
-        graph_evidence.append(f"Neo4j xác nhận thuộc khu vực {ward}")
+        graph_evidence.append(f"Nằm tại khu vực {ward}")
     semantic = []
     score = item.get("score_breakdown", {}).get("semantic", 0)
     if score > .5:
