@@ -1,4 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from minio import S3Error
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 
 from src.api.v1.endpoints.properties.controllers.controller_properties import (
@@ -8,8 +11,45 @@ from src.api.v1.endpoints.properties.schemas.properties import (
     AISearchRequestModel,
 )
 from src.search.service import hybrid_search_service
+from src.settings.event import minio_client
 
 router = APIRouter()
+
+
+@router.get("/image", summary="Read a property image from private MinIO storage")
+async def view_get_property_image(path: str = Query(..., min_length=1)):
+    """Stream a DB-backed property image without exposing MinIO credentials."""
+    try:
+        image = await run_in_threadpool(minio_client.minio_get_object, path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except S3Error as exc:
+        status_code = 404 if exc.code in {"NoSuchKey", "NoSuchObject"} else 502
+        raise HTTPException(
+            status_code=status_code,
+            detail="Property image is unavailable",
+        ) from exc
+
+    content_type = image.headers.get("Content-Type", "application/octet-stream")
+    if not content_type.lower().startswith("image/"):
+        image.close()
+        image.release_conn()
+        raise HTTPException(status_code=415, detail="MinIO object is not an image")
+    content_length = image.headers.get("Content-Length")
+    headers = {
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800"
+    }
+    if content_length:
+        headers["Content-Length"] = content_length
+
+    def stream_image():
+        try:
+            yield from image.stream(64 * 1024)
+        finally:
+            image.close()
+            image.release_conn()
+
+    return StreamingResponse(stream_image(), media_type=content_type, headers=headers)
 
 
 @router.get("", summary="Get all properties", description="Get all properties")

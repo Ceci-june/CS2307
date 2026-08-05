@@ -1,6 +1,7 @@
 import os
 import io
 from datetime import timedelta
+from urllib.parse import unquote, urlparse
 
 import loguru
 from minio import Minio
@@ -60,6 +61,35 @@ class MinioClient:
 
     def minio_get_url(self, s3_key: str, hours: int = 24 * 7) -> str:
         return "https://" + self.minio_url + "/" + self.minio_bucket_name + "/" + s3_key
+
+    def normalize_object_key(self, image_path: str) -> str:
+        """Return a safe MinIO object key from a DB URL or object path."""
+        raw_path = str(image_path or "").strip()
+        if not raw_path:
+            raise ValueError("Image path is required")
+
+        parsed = urlparse(raw_path)
+        path = unquote(parsed.path if parsed.scheme else raw_path).lstrip("/")
+        bucket_prefix = f"{self.minio_bucket_name}/"
+        if path.startswith(bucket_prefix):
+            path = path[len(bucket_prefix):]
+
+        parts = path.split("/")
+        if not path.startswith("images/") or any(
+            part in {"", ".", ".."} for part in parts
+        ):
+            raise ValueError("Invalid property image path")
+        return path
+
+    def minio_get_object(self, image_path: str):
+        """Open an image stored in the configured private property bucket."""
+        if self._minio_client is None:
+            raise RuntimeError("MinIO client is not started")
+        object_key = self.normalize_object_key(image_path)
+        return self._minio_client.get_object(
+            bucket_name=self.minio_bucket_name,
+            object_name=object_key,
+        )
 
     def stop(self):
         self._minio_client = None
