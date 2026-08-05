@@ -115,6 +115,23 @@ database before running it; downgrading the initial revision removes its tables.
 Revisions are written explicitly because the project currently uses SQL queries
 without declarative ORM models. See `backend/migrations/README.md` for details.
 
+## LangGraph chat agents
+
+`POST /v1/chat` uses a LangGraph supervisor to keep ordinary conversation and
+general real-estate Q&A separate from property consultation. Only the consultant
+agent has access to the native `search_properties` and
+`inspect_previous_recommendations` tools, so greetings do not invoke hybrid
+search. Authenticated conversations use PostgreSQL LangGraph checkpoints in
+addition to the existing visible conversation history; guest conversations keep
+their bounded context in the browser tab.
+
+The configured OpenAI-compatible endpoint must return standard Chat Completions
+`tool_calls`. Verify it after changing model/server configuration:
+
+```bash
+docker compose run --rm --no-deps backend python scripts/verify_tool_calling.py
+```
+
 ## Architecture
 
 | Service | Port | Technology | Purpose |
