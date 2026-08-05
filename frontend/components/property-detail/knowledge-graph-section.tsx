@@ -34,6 +34,13 @@ interface PropertyGraph {
   amenity_categories: string[]
 }
 
+interface SharedRelationship {
+  type?: string
+  id?: string
+  name?: string
+  category?: string
+}
+
 interface RelatedProperty {
   id?: string | number
   listing_id?: string | number
@@ -47,7 +54,7 @@ interface RelatedProperty {
   graph_evidence?: {
     listing_node_id?: string
     shared_count?: number
-    shared_relationships?: Array<{ type?: string; name?: string; category?: string }>
+    shared_relationships?: SharedRelationship[]
   }
 }
 
@@ -92,6 +99,11 @@ const AMENITY_LABELS: Record<string, string> = {
   park: 'Công viên',
 }
 
+const AMENITY_LINK_PRIORITY = [
+  'metro', 'school', 'hospital', 'mall', 'supermarket',
+  'park', 'market', 'bus_stop', 'college_university',
+]
+
 const NODE_COLORS: Record<GraphNodeType, string> = {
   Listing: '#E03C31',
   RelatedListing: '#f59e0b',
@@ -124,6 +136,11 @@ function formatNumber(value: unknown, maximumFractionDigits = 1) {
 function getEdgeLabel(edge: GraphEdge) {
   if (edge.type === 'RELATED_LISTING') {
     const score = edge.properties.similarity_score
+    const sharedCount = edge.properties.shared_count
+    if (typeof sharedCount === 'number' && sharedCount > 0) {
+      const scoreLabel = typeof score === 'number' ? ` · ${formatNumber(score, 2)}` : ''
+      return `${formatNumber(sharedCount, 0)} liên kết chung${scoreLabel}`
+    }
     if (typeof score === 'number') return `Tương đồng ${formatNumber(score, 2)}`
     return RELATIONSHIP_LABELS[edge.type] || edge.type
   }
@@ -159,11 +176,16 @@ function normalizeSharedName(value: unknown) {
   return String(value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
 }
 
-function findSharedGraphNode(nodes: GraphNode[], shared: { type?: string; name?: string; category?: string }) {
-  const normalizedName = normalizeSharedName(shared.name)
-  if (!normalizedName) return undefined
+function findSharedGraphNode(nodes: GraphNode[], shared: SharedRelationship) {
   const targetType = shared.type === 'ward' ? 'Ward' : shared.type === 'street' ? 'Street' : shared.type === 'amenity' ? 'Amenity' : null
   if (!targetType) return undefined
+  if (shared.id) {
+    const namespacedId = `${targetType.toLocaleLowerCase()}:${shared.id}`
+    const nodeById = nodes.find((node) => node.id === namespacedId)
+    if (nodeById) return nodeById
+  }
+  const normalizedName = normalizeSharedName(shared.name)
+  if (!normalizedName) return undefined
   return nodes.find((node) => {
     if (node.type !== targetType) return false
     const nodeName = normalizeSharedName(node.properties.name || node.label)
@@ -173,6 +195,34 @@ function findSharedGraphNode(nodes: GraphNode[], shared: { type?: string; name?:
     }
     return true
   })
+}
+
+function selectSharedGraphLinks(nodes: GraphNode[], relationships: SharedRelationship[]) {
+  const matched = relationships
+    .map((shared) => ({ shared, node: findSharedGraphNode(nodes, shared) }))
+    .filter((item): item is { shared: SharedRelationship; node: GraphNode } => Boolean(item.node))
+
+  const unique = matched.filter((item, index, items) => (
+    items.findIndex((candidate) => candidate.node.id === item.node.id) === index
+  ))
+  const amenities = unique
+    .filter((item) => item.node.type === 'Amenity')
+    .sort((left, right) => {
+      const leftPriority = AMENITY_LINK_PRIORITY.indexOf(String(left.shared.category || ''))
+      const rightPriority = AMENITY_LINK_PRIORITY.indexOf(String(right.shared.category || ''))
+      const categoryCompare = (leftPriority < 0 ? Number.MAX_SAFE_INTEGER : leftPriority)
+        - (rightPriority < 0 ? Number.MAX_SAFE_INTEGER : rightPriority)
+      return categoryCompare || left.node.label.localeCompare(right.node.label)
+    })
+  const street = unique.find((item) => item.node.type === 'Street')
+  const ward = unique.find((item) => item.node.type === 'Ward')
+
+  // Keep the graph readable while making the recommendation explainable:
+  // show the shared address anchors plus two representative amenities. The
+  // complete list remains available on the direct related-listing edge.
+  return [street, ward, ...amenities.slice(0, 2)].filter(
+    (item): item is { shared: SharedRelationship; node: GraphNode } => Boolean(item),
+  )
 }
 
 function formatPropertyValue(key: string, value: unknown) {
@@ -325,11 +375,9 @@ export function KnowledgeGraphSection({ propertyId }: KnowledgeGraphSectionProps
       })
 
       // Reuse shared Ward/Street/Amenity nodes already visible in the main
-      // graph. This makes the reason for the recommendation inspectable
-      // without expanding a second full property subgraph.
-      for (const shared of sharedRelationships.slice(0, 3)) {
-        const sharedNode = findSharedGraphNode(graph.nodes, shared)
-        if (!sharedNode) continue
+      // graph. Resolve valid UI nodes before applying the display limit so an
+      // internal GeoCluster entry cannot accidentally hide amenity evidence.
+      for (const { shared, node: sharedNode } of selectSharedGraphLinks(graph.nodes, sharedRelationships)) {
         edges.push({
           id: `${nodeId}|SHARED_RELATIONSHIP|${sharedNode.id}`,
           source: nodeId,
