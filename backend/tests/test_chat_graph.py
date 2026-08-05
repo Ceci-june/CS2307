@@ -4,7 +4,12 @@ from unittest.mock import AsyncMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from src.services.agent.chat_graph import ChatAgentService, _fallback_route, _has_meaningful_filters
+from src.services.agent.chat_graph import (
+    ChatAgentService,
+    _fallback_route,
+    _fast_route,
+    _has_meaningful_filters,
+)
 
 
 class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
@@ -24,6 +29,14 @@ class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
         decision = _fallback_route("Tư vấn giúp tôi mua nhà")
         self.assertEqual(decision.mode, "consult")
         self.assertTrue(decision.needs_clarification)
+
+    def test_fast_route_handles_clear_search_without_llm(self):
+        decision = _fast_route("Tìm căn hộ Quận 7 dưới 5 tỷ")
+        self.assertIsNotNone(decision)
+        self.assertEqual(decision.mode, "consult")
+
+    def test_fast_route_defers_unknown_intent_to_llm(self):
+        self.assertIsNone(_fast_route("Theo bạn khu vực này thế nào?"))
 
     def test_meaningful_ui_filters_ignore_empty_default_values(self):
         self.assertFalse(_has_meaningful_filters({"min_price": 0, "district": "", "pool": False}))
@@ -58,7 +71,9 @@ class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
         router = FakeRouter()
         self.service._model = lambda *_args, **_kwargs: router
 
-        decision = await self.service._route({"messages": [HumanMessage(content="Xin chào")]})
+        decision = await self.service._route(
+            {"messages": [HumanMessage(content="Theo bạn khu vực này thế nào?")]}
+        )
 
         self.assertEqual(decision.mode, "chat")
         self.assertEqual(router.structured_output_kwargs, {"method": "json_mode"})
@@ -117,8 +132,9 @@ class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
             },
             "total_candidates": 1,
             "relaxations": [],
-            "llm_answer_enabled": True,
-            "llm_answer_generated": True,
+            "llm_answer_enabled": False,
+            "llm_answer_generated": False,
+            "assistant_answer": "Có một căn phù hợp với ngân sách.",
         }
         with patch(
             "src.services.agent.chat_graph.hybrid_search_service.search",
@@ -133,12 +149,28 @@ class ChatGraphRoutingTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(update["search_performed"])
         self.assertEqual(update["tool_name"], "search_properties")
         self.assertEqual(update["latest_results"][0]["listing_id"], 123)
-        self.assertTrue(update["llm_answer_enabled"])
-        self.assertTrue(update["llm_answer_generated"])
+        self.assertFalse(update["llm_answer_enabled"])
+        self.assertFalse(update["llm_answer_generated"])
+        self.assertEqual(update["search_answer"], "Có một căn phù hợp với ngân sách.")
         self.assertTrue(search_mock.await_args.kwargs["generate_llm_answer"])
         self.assertIsInstance(update["messages"][0], ToolMessage)
         observation = update["messages"][0].content
         self.assertIn('"applied_filters":{"districts":["Quận 7"]', observation)
+
+    async def test_finalizer_reuses_search_answer_without_another_model_call(self):
+        self.service._model = lambda *_args, **_kwargs: self.fail("unexpected model call")
+        update = await self.service._advisor_finalizer(
+            {
+                "messages": [ToolMessage(content='{"results":[]}', tool_call_id="call-1")],
+                "search_performed": True,
+                "search_answer": "Có một căn phù hợp và đây là phân tích chi tiết.",
+            }
+        )
+
+        self.assertEqual(
+            update["assistant_answer"],
+            "Có một căn phù hợp và đây là phân tích chi tiết.",
+        )
 
     async def test_greeting_runs_chat_branch_without_constructing_tools(self):
         class FakeRouter:

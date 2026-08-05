@@ -22,7 +22,7 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 from langgraph.types import Command
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -59,6 +59,7 @@ class AgentState(MessagesState):
     tool_arguments: Optional[dict[str, Any]]
     tool_error: Optional[str]
     assistant_answer: Optional[str]
+    search_answer: Optional[str]
     llm_answer_enabled: bool
     llm_answer_generated: bool
     agent_metadata: dict[str, Any]
@@ -180,6 +181,29 @@ def _fallback_route(message: str) -> RouteDecision:
     return RouteDecision(mode="chat")
 
 
+def _fast_route(message: str) -> RouteDecision | None:
+    """Route common, unambiguous requests without an LLM round-trip.
+
+    Unknown messages deliberately return ``None`` so the model still handles
+    nuanced intent instead of the deterministic fallback silently treating it
+    as casual chat.
+    """
+    normalized = message.lower().strip()
+    if re.fullmatch(r"(xin )?chào+|hello+|hi+|cảm ơn+|thanks?", normalized):
+        return RouteDecision(mode="chat")
+    if any(token in normalized for token in ("thủ tục", "sổ hồng", "pháp lý", "lãi suất", "đặt cọc")):
+        return RouteDecision(mode="real_estate_qa")
+    if any(
+        token in normalized
+        for token in (
+            "tìm", "gợi ý", "đề xuất", "tư vấn", "mua nhà", "thuê nhà",
+            "căn thứ", "căn số", "căn này", "căn kia",
+        )
+    ):
+        return _fallback_route(message)
+    return None
+
+
 def _assistant_fallback(mode: str) -> str:
     if mode == "consult":
         return "Bạn cho tôi biết thêm khu vực, ngân sách hoặc loại hình nhà bạn cần để tôi tư vấn chính xác hơn nhé."
@@ -280,6 +304,10 @@ class ChatAgentService:
 
     async def _route(self, state: AgentState) -> RouteDecision:
         messages = _message_window(state.get("messages", []))
+        latest = _text(messages[-1]) if messages else ""
+        fast_decision = _fast_route(latest)
+        if fast_decision is not None:
+            return fast_decision
         try:
             # Qwen/Alibaba rejects LangChain's function-calling structured output
             # in thinking mode because it sets tool_choice. JSON mode keeps
@@ -291,7 +319,6 @@ class ChatAgentService:
             return RouteDecision.model_validate(decision)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Chat supervisor failed; using safe fallback: {}", exc)
-            latest = _text(messages[-1]) if messages else ""
             return _fallback_route(latest)
 
     async def _supervisor(self, state: AgentState) -> dict[str, Any]:
@@ -364,6 +391,9 @@ class ChatAgentService:
         return {"messages": responses, "assistant_answer": answer, "tool_error": "multiple_tool_calls"}
 
     async def _advisor_finalizer(self, state: AgentState) -> dict[str, Any]:
+        search_answer = str(state.get("search_answer") or "").strip()
+        if state.get("search_performed") and search_answer:
+            return {"messages": [AIMessage(content=search_answer)], "assistant_answer": search_answer}
         try:
             response = await self._model(0.15).ainvoke(
                 [SystemMessage(_FINALIZER_PROMPT), *_message_window(state.get("messages", []))]
@@ -411,8 +441,8 @@ class ChatAgentService:
             result = await asyncio.wait_for(
                 hybrid_search_service.search(
                     request,
-                    # HybridSearchService reads SEARCH_USE_LLM_ANSWER from the
-                    # environment and skips the call when it is disabled.
+                    # A dedicated grounded call produces both the answer and per-card
+                    # analysis; the graph then reuses it without another LLM call.
                     generate_llm_answer=True,
                     user_id=state.get("user_id"),
                 ),
@@ -433,6 +463,7 @@ class ChatAgentService:
                     "search_performed": True,
                     "llm_answer_enabled": bool(result.get("llm_answer_enabled")),
                     "llm_answer_generated": bool(result.get("llm_answer_generated")),
+                    "search_answer": result.get("assistant_answer"),
                     "tool_name": "search_properties",
                     "tool_arguments": {"query": query.strip()},
                     "tool_error": None,
@@ -566,6 +597,7 @@ class ChatAgentService:
             "tool_arguments": None,
             "tool_error": None,
             "assistant_answer": None,
+            "search_answer": None,
             "llm_answer_enabled": False,
             "llm_answer_generated": False,
         }

@@ -20,10 +20,13 @@ NGUYÊN TẮC:
 - Nếu dữ liệu không đủ để giải thích hay so sánh, hãy nói rõ điều đó thay vì tự bịa.
 
 VAI TRÒ TỪNG TRƯỜNG:
-- "answer": tổng quan ngắn gọn bằng tiếng Việt — có bao nhiêu căn phù hợp và vì sao, không đi vào
-  chi tiết từng căn, không kèm thông tin liên hệ hay lời chào.
-- "explanation": lý do CĂN NÀY hợp yêu cầu, bám sát dữ liệu/evidence của chính căn đó.
-- "comparison": điểm mạnh hoặc đánh đổi của căn này SO VỚI các căn còn lại đang hiển thị.
+- "answer": tư vấn hữu ích bằng tiếng Việt trong 2-4 đoạn ngắn: tóm tắt mức độ phù hợp,
+  phân tích các tiêu chí quan trọng và nêu đánh đổi đáng chú ý giữa các lựa chọn. Không lặp
+  nguyên văn nội dung từng card, không kèm thông tin liên hệ hay lời chào.
+- "explanation": 2-3 câu giải thích vì sao CĂN NÀY hợp yêu cầu, bám sát dữ liệu/evidence
+  của chính căn đó và diễn đạt tự nhiên, không nhắc tên hệ thống kỹ thuật như Neo4j.
+- "comparison": 1-2 câu nêu điểm mạnh hoặc đánh đổi của căn này SO VỚI các căn còn lại
+  đang hiển thị. Nếu chỉ có một căn, so với tiêu chí người dùng thay vì bịa lựa chọn khác.
 
 Trả về ĐÚNG một JSON object (không markdown), một phần tử "properties" cho mỗi ứng viên thuộc TP.HCM; không tạo phần tử cho ứng viên ngoài TP.HCM:
 {
