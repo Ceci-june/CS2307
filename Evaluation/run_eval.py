@@ -1,9 +1,15 @@
 """Giai doan 1 (EVAL_PLAN.md muc 4): live eval — can backend dang chay.
 
-Voi moi trong 1.055 event: replay raw_query qua HybridSearchService that
-(HTTP toi localhost:8001, xem live_client.py) de lay `pred`, roi tinh 25
+Voi moi trong ~488 event (ground truth v3, ward-tiered — xem
+gen_user_data/generation/gen_v3.py): replay raw_query qua HybridSearchService
+that (HTTP toi localhost:8001, xem live_client.py) de lay `pred`, roi tinh 25
 metric (Nhom A-G, muc 3) so voi `recommended_items` (ground truth) va hanh vi
-that trong interactions_v2_claude.json.
+that trong interactions_v3_claude.json.
+
+Truong hop 1 (chi dung raw_query, khong set filter sidebar): KHONG gui
+`filters` len backend — chi gui raw_query text, backend tu suy ra
+preference_filters (chi anh huong ranking, khong bao gio loai bo candidate).
+Xem docstring fetch_live_results() ben duoi.
 
     cd Evaluation && python run_eval.py [--limit N] [--k K]
 """
@@ -36,9 +42,17 @@ sys.path.insert(0, str(HERE / "reco_metrics_lib"))
 from recommenders.evaluation import python_evaluation as pe  # noqa: E402
 
 
-def fetch_live_results(events, users, limit=None):
+def fetch_live_results(events, limit=None):
     """Call the live backend for each event's raw_query. Returns
     {result_set_id: [{listing_id, score, rank}, ...]} plus per-event errors.
+
+    Sends NO explicit `filters` — only `raw_query` text. The backend's own
+    parser (rule-based + LLM) infers district/price/bedrooms from the text
+    into `preference_filters`, which only affects ranking and never excludes
+    candidates (backend/src/search/query_parser.py, PR "feat/llm-agentic").
+    Explicit `filters` still go to `hard_filters`, a strict SQL AND with no
+    fallback — sending them would let a single bad value zero out results,
+    making the run un-scoreable.
     """
     subset = events[:limit] if limit else events
     live_results = {}
@@ -49,7 +63,6 @@ def fetch_live_results(events, users, limit=None):
         try:
             live_results[ev["result_set_id"]] = live_client.search(
                 ev["context"]["raw_query"], top_k=k,
-                filters=A.translate_filters_for_live(ev, users),
             )
         except Exception as exc:  # noqa: BLE001 — one bad query must not kill the run
             errors.append({"result_set_id": ev["result_set_id"], "error": str(exc)})
@@ -184,7 +197,7 @@ def breakdown_by(events, true_df, pred_df, users, key_fn, k):
     return out
 
 
-def per_query_detail(used_events, live_results, users):
+def per_query_detail(used_events, live_results):
     """Raw_query + ground truth + live pred for every event, so results can be
     inspected/compared by hand instead of only reading aggregate metrics.
     """
@@ -200,8 +213,10 @@ def per_query_detail(used_events, live_results, users):
             "result_set_id": rsid,
             "user_id": ev.get("user_id"),
             "raw_query": ev["context"]["raw_query"],
+            # filters_applied describes what ground truth was built for — NOT
+            # what was sent to the live system (see fetch_live_results docstring:
+            # no explicit filters are sent, only raw_query text).
             "filters_applied": ev["context"].get("filters_applied"),
-            "filters_sent_to_live": A.translate_filters_for_live(ev, users),
             "ground_truth": [{"listing_id": it["listing_id"], "rank": it["rank"], "score": it["score"]}
                               for it in gt_items],
             "llm_output_picks": [int(k) for k in ev["llm_output"]],
@@ -232,6 +247,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="Only replay the first N events (smoke test)")
     parser.add_argument("--k", type=int, default=None, help="Override k (default: ground-truth size per event)")
+    parser.add_argument("--ids", type=str, default=None,
+                         help="Comma-separated result_set_id list — only replay these events "
+                              "(e.g. to retry ones that errored in a previous run)")
     args = parser.parse_args()
 
     if not live_client.health_check():
@@ -239,6 +257,12 @@ def main():
         sys.exit(1)
 
     events = A.load_events()
+    if args.ids:
+        id_set = {i.strip() for i in args.ids.split(",") if i.strip()}
+        events = [ev for ev in events if ev["result_set_id"] in id_set]
+        missing = id_set - {ev["result_set_id"] for ev in events}
+        print(f"[eval] --ids filter: {len(events)}/{len(id_set)} matched"
+              + (f" (not found: {sorted(missing)})" if missing else ""))
     interactions = A.load_interactions()
     users = A.load_users()
     listings = A.load_listings()
@@ -247,7 +271,7 @@ def main():
     k = args.k or max(k_counts)
     print(f"[eval] ground-truth size per event: {dict(k_counts)} -> using k={k}")
 
-    live_results, errors = fetch_live_results(events, users, limit=args.limit)
+    live_results, errors = fetch_live_results(events, limit=args.limit)
     used_events = events[: args.limit] if args.limit else events
     used_events = [ev for ev in used_events if ev["result_set_id"] in live_results]
     print(f"[eval] usable events (live query succeeded): {len(used_events)}/{len(events) if not args.limit else args.limit}")
@@ -279,7 +303,7 @@ def main():
         "query_errors": errors[:20],
     }
 
-    per_query = per_query_detail(used_events, live_results, users)
+    per_query = per_query_detail(used_events, live_results)
 
     # One subfolder per run (timestamp + event count) instead of flat files —
     # keeps results/ navigable across many runs (smoke tests, partial, full).

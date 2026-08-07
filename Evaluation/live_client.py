@@ -16,7 +16,7 @@ class LiveSearchError(RuntimeError):
 
 
 def search(raw_query: str, top_k: int, filters: Optional[Dict[str, Any]] = None,
-           timeout: float = 30.0) -> List[Dict[str, Any]]:
+           timeout: float = 120.0) -> List[Dict[str, Any]]:
     """POST /v1/search and return [{listing_id, score, rank}, ...] ranked by the
     live system. `score` = `final_score` from src/search/ranker.py (the blended
     rank score the live system actually sorts by), not just semantic/text score.

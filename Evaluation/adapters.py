@@ -2,8 +2,9 @@
 API contract (col_user/col_item/col_rating/col_prediction).
 
 Ground truth semantics (see EVAL_PLAN.md mục 0): `recommended_items` (10/event,
-ranked by the deterministic relevance_v2() match between user profile and
-listing attributes) IS the ground truth. `llm_output` is a downstream
+ranked by a deterministic content-match score between user profile and
+listing attributes — relevance_v2() in v2, content_score() in v3's
+ward-tiered generator) IS the ground truth. `llm_output` is a downstream
 explain/display layer, not used as a relevance label here.
 
 Two different "col_user" keyings are used on purpose:
@@ -156,35 +157,6 @@ def interaction_rating_pairs(
             "pred_score": pred_lookup[key],
         })
     return pd.DataFrame(rows)
-
-
-def translate_filters_for_live(event: dict, users: Dict[str, dict]) -> dict:
-    """Translate gen_user_data's filters_applied into what the backend's
-    apply_explicit_filters() actually recognizes (backend/src/search/query_parser.py:220-241).
-
-    Two mismatches found by investigate_low_scores.py (both silently starved
-    the live system of the right candidates, not a ranking-quality problem):
-
-    - price_max -> max_price: the backend only reads "max_price"; "price_max"
-      matched no mapping key and was silently dropped, so eval queries never
-      respected the budget at all.
-    - district: filters_applied picks ONE random district out of the user's
-      preferred_districts (gen_v2.py:249), but relevance_v2() — the function
-      that ranks ground truth — accepts ANY of the user's preferred_districts
-      (gen_v2.py:182-183). Send the full list instead of the single random
-      pick; the backend's district filter already accepts a list (csv_values()
-      -> SQL "= ANY(...)"), so live results get judged against the same
-      district set ground truth was actually built from.
-    """
-    filters = dict(event.get("context", {}).get("filters_applied") or {})
-    if "price_max" in filters:
-        filters["max_price"] = filters.pop("price_max")
-    user = users.get(event.get("user_id"))
-    if user:
-        pref_districts = [d["value"] for d in user["explicit_preferences"]["preferred_districts"]]
-        if pref_districts:
-            filters["district"] = pref_districts
-    return filters
 
 
 def events_by_user(events: List[dict]) -> Dict[str, List[dict]]:
